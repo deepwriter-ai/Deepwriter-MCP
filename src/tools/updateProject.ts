@@ -22,14 +22,16 @@ interface UpdateProjectInputArgs {
   updates: ProjectUpdatesArgs;
 }
 
-// Re-use the response type from the API client
-type UpdateProjectOutput = apiClient.UpdateProjectResponse;
+// Define the MCP-compliant output structure
+interface UpdateProjectMcpOutput {
+  content: { type: 'text'; text: string }[];
+}
 
 export const updateProjectTool = {
   name: "updateProject",
   description: "Update an existing project",
   // TODO: Add input/output schema validation if needed
-  async execute(args: UpdateProjectInputArgs): Promise<UpdateProjectOutput> {
+  async execute(args: UpdateProjectInputArgs): Promise<UpdateProjectMcpOutput> {
     console.error(`Executing updateProject tool for project ID: ${args.project_id}...`);
 
     if (!args.api_key) {
@@ -45,13 +47,22 @@ export const updateProjectTool = {
     try {
       // Call the actual API client function
       // Note: The API client expects ProjectUpdates type, which matches ProjectUpdatesArgs here
-      const response = await apiClient.updateProject(args.api_key, args.project_id, args.updates);
-      console.error(`API call successful for updateProject. Updated project ID: ${response.id}`);
-      return response; // Return the structure expected by the output schema
+      const apiResponse = await apiClient.updateProject(args.api_key, args.project_id, args.updates);
+      console.error(`API call successful for updateProject. Updated project ID: ${apiResponse.id}`);
+
+      // Transform the API response into MCP format
+      const mcpResponse: UpdateProjectMcpOutput = {
+        content: [
+          { type: 'text', text: `Successfully updated project with ID: ${apiResponse.id}` }
+        ]
+      };
+
+      return mcpResponse; // Return the MCP-compliant structure
     } catch (error) {
       console.error(`Error executing updateProject tool: ${error}`);
-      // TODO: Re-throw or format error for MCP response
-      throw error; // Propagate the error for now
+      // Format error for MCP response
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to update project ID ${args.project_id}: ${errorMessage}`);
     }
   }
 };

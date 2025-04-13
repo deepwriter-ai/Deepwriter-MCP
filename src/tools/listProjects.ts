@@ -9,10 +9,12 @@ interface Project {
   id: string;
   title: string;
   created_at: string;
+  // Add other relevant fields if needed
 }
 
+// Define the MCP-compliant output structure
 interface ListProjectsOutput {
-  projects: Project[];
+  content: { type: 'text'; text: string }[];
 }
 
 export const listProjectsTool = {
@@ -29,13 +31,28 @@ export const listProjectsTool = {
 
     try {
       // Call the actual API client function
-      const response = await apiClient.listProjects(args.api_key);
-      console.error(`API call successful. Received ${response.projects.length} projects.`);
-      return response; // Return the structure expected by the output schema
+      const apiResponse = await apiClient.listProjects(args.api_key);
+      console.error(`API call successful. Received ${apiResponse.projects.length} projects.`);
+
+      // Transform the API response into MCP format
+      const mcpResponse: ListProjectsOutput = {
+        content: apiResponse.projects.map(project => ({
+          type: 'text',
+          text: `Project ID: ${project.id}, Title: ${project.title}, Created: ${project.created_at}`
+        }))
+      };
+
+      if (mcpResponse.content.length === 0) {
+        mcpResponse.content.push({ type: 'text', text: 'No projects found.' });
+      }
+
+      return mcpResponse; // Return the MCP-compliant structure
     } catch (error) {
       console.error(`Error executing listProjects tool: ${error}`);
-      // TODO: Re-throw or format error for MCP response
-      throw error; // Propagate the error for now
+      // Format error for MCP response
+      // Ensure error is an instance of Error before accessing message
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to list projects: ${errorMessage}`);
     }
   }
 };

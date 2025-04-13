@@ -3,25 +3,31 @@ import * as apiClient from '../api/deepwriterClient'; // Import the API client
 // Define input/output types based on schema
 interface GenerateWorkInputArgs {
   api_key: string;
-  project_id: string;
+  projectId?: string;
+  project_id?: string; // Support both naming conventions
   is_default?: boolean; // Optional, defaults to true in API client
 }
 
-// Re-use the response type from the API client
-type GenerateWorkOutput = apiClient.GenerateWorkResponse;
+// Define the MCP-compliant output structure
+interface GenerateWorkMcpOutput {
+  content: { type: 'text'; text: string }[];
+}
 
 export const generateWorkTool = {
   name: "generateWork",
   description: "Generate content for a project",
   // TODO: Add input/output schema validation if needed
-  async execute(args: GenerateWorkInputArgs): Promise<GenerateWorkOutput> {
-    console.error(`Executing generateWork tool for project ID: ${args.project_id}...`);
+  async execute(args: GenerateWorkInputArgs): Promise<GenerateWorkMcpOutput> {
+    // Support both projectId and project_id
+    const projectId = args.projectId || args.project_id;
+    
+    console.error(`Executing generateWork tool for project ID: ${projectId}...`);
 
     if (!args.api_key) {
       throw new Error("Missing required argument: api_key");
     }
-    if (!args.project_id) {
-      throw new Error("Missing required argument: project_id");
+    if (!projectId) {
+      throw new Error("Missing required argument: projectId or project_id");
     }
 
     // Use provided is_default or let the API client handle the default (true)
@@ -29,13 +35,22 @@ export const generateWorkTool = {
 
     try {
       // Call the actual API client function
-      const response = await apiClient.generateWork(args.api_key, args.project_id, isDefault);
-      console.error(`API call successful for generateWork. Job ID: ${response.job_id}`);
-      return response; // Return the structure expected by the output schema ({ job_id: ... })
+      const apiResponse = await apiClient.generateWork(args.api_key, projectId, isDefault);
+      console.error(`API call successful for generateWork. Job ID: ${apiResponse.jobId}`);
+
+      // Transform the API response into MCP format
+      const mcpResponse: GenerateWorkMcpOutput = {
+        content: [
+          { type: 'text', text: `Successfully started generation job for project ID ${projectId}. Job ID: ${apiResponse.jobId ?? 'N/A'}` }
+        ]
+      };
+
+      return mcpResponse; // Return the MCP-compliant structure
     } catch (error) {
       console.error(`Error executing generateWork tool: ${error}`);
-      // TODO: Re-throw or format error for MCP response
-      throw error; // Propagate the error for now
+      // Format error for MCP response
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Failed to generate work for project ID ${projectId}: ${errorMessage}`);
     }
   }
 };

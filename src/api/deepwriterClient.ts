@@ -32,18 +32,26 @@ async function makeApiRequest<T>(
     });
 
     if (!response.ok) {
-      let errorData: ApiErrorResponse | string;
+      let errorBodyText = await response.text(); // Get raw response text first
+      let errorMessage = `API request failed: ${response.status} ${response.statusText}`;
+      console.error(`API Error ${response.status}: Raw Body ->`, errorBodyText); // Log raw body
+
       try {
-        errorData = await response.json() as ApiErrorResponse;
+        // Try parsing as JSON to get a structured message if available
+        const errorJson = JSON.parse(errorBodyText) as ApiErrorResponse;
+        if (errorJson && errorJson.message) {
+          errorMessage += ` - ${errorJson.message}`;
+        } else if (errorBodyText) {
+           errorMessage += ` - ${errorBodyText}`; // Use raw text if no JSON message
+        }
       } catch (jsonError) {
-        errorData = await response.text(); // Fallback to text if JSON parsing fails
+         // If JSON parsing fails, use the raw text if available
+         if (errorBodyText) {
+            errorMessage += ` - ${errorBodyText}`;
+         }
       }
-      console.error(`API Error ${response.status}:`, errorData);
-      // TODO: Implement more specific error mapping based on status codes (401, 403, 404, etc.)
-      // Example:
-      // if (response.status === 401) throw new Error("Invalid API Key");
-      // if (response.status === 404) throw new Error("Resource not found");
-      throw new Error(`API request failed: ${response.status} ${response.statusText} - ${typeof errorData === 'string' ? errorData : errorData.message}`);
+       // TODO: Implement more specific error mapping based on status codes (401, 403, 404, etc.)
+      throw new Error(errorMessage);
     }
 
     // Handle cases where the response might be empty (e.g., DELETE success)
@@ -119,24 +127,30 @@ export async function getProjectDetails(apiKey: string, projectId: string): Prom
 
 // --- createProject ---
 
-interface CreateProjectInput {
-  title: string;
+// Input body structure expected by the API
+interface CreateProjectApiInput {
+  newProjectName: string; // API expects 'name', not 'title'
+  email: string;
 }
 
 export interface CreateProjectResponse {
   id: string; // ID of the newly created project
 }
 
-export async function createProject(apiKey: string, title: string): Promise<CreateProjectResponse> {
-  console.error(`Calling actual createProject API with title: ${title}`);
+export async function createProject(apiKey: string, title: string, email: string): Promise<CreateProjectResponse> {
+  console.error(`Calling actual createProject API with title: ${title}, email: ${email}`);
   if (!apiKey) {
     throw new Error("API key is required for createProject");
   }
   if (!title || title.trim() === '') {
     throw new Error("Project title is required for createProject");
   }
+    if (!email || title.trim() === '') {
+    throw new Error("Project email is required for createProject");
+  }
 
-  const body: CreateProjectInput = { title };
+  // Use the correct field name 'newProjectName' for the API request body
+  const body: CreateProjectApiInput = { newProjectName: title, email: email };
   return makeApiRequest<CreateProjectResponse>('/createProject', apiKey, 'POST', body);
 }
 
@@ -212,12 +226,12 @@ export async function deleteProject(apiKey: string, projectId: string): Promise<
 // --- generateWork ---
 
 interface GenerateWorkInputBody {
-  project_id: string;
+  projectId: string;
   is_default?: boolean; // Optional based on schema, default is true
 }
 
 export interface GenerateWorkResponse {
-  job_id: string; // ID of the generated job
+  jobId: string; // ID of the generated job
 }
 
 export async function generateWork(
@@ -234,7 +248,7 @@ export async function generateWork(
   }
 
   const body: GenerateWorkInputBody = {
-    project_id: projectId,
+    projectId: projectId,
     is_default: isDefault,
   };
   return makeApiRequest<GenerateWorkResponse>('/generateWork', apiKey, 'POST', body);
