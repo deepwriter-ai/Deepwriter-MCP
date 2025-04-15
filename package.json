@@ -1,25 +1,20 @@
 {
   "name": "deepwriter-mcp",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "build": "tsc",
-    "start": "node dist/index.js"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "devDependencies": {
-    "@types/node": "^22.14.1",
-    "@types/node-fetch": "^2.6.12",
-    "typescript": "^5.8.3"
+    "start": "node build/index.js"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.9.0",
-    "dotenv": "^16.5.0",
-    "node-fetch": "^2.7.0",
-    "zod": "^3.24.2"
+    "dotenv": "^16.4.5",
+    "node-fetch": "^3.3.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.30",
+    "@types/node-fetch": "^2.6.12",
+    "typescript": "^5.8.3"
   }
 }

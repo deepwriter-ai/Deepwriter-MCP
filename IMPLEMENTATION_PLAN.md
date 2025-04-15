@@ -1,110 +1,142 @@
-# Implementation Plan: DeepWriter MCP Server
+# DeepWriter MCP Server Upgrade Plan
 
 ## Overview
+This document outlines the plan for upgrading the DeepWriter MCP server to match the latest Model Context Protocol specification (2025-03-26).
 
-This plan outlines the steps to implement an MCP server that integrates with DeepWriter's API, following the provided schemas and best practices for security, error handling, and maintainability.
+## Current State
+- Basic JSON-RPC 2.0 support implemented
+- Initialization handshake working
+- Core tools for DeepWriter API integration exist
+- Added to Claude's MCP settings
 
----
+## Required Upgrades
+1. Transport layer needs to support both stdio and new Streamable HTTP
+2. Authorization framework needs to be implemented (OAuth 2.1)
+3. Tool annotations need to be added for better behavior description
+4. Support for JSON-RPC batching
+5. Progress notifications need message field
+6. Audio content type support
+7. Completions capability for argument suggestions
 
-## 1. Memory Bank Initialization
+## Implementation Phases
 
-- [x] Create all required core files in memory-bank/ to document project context, architecture, technology, and progress.
+### Phase 1: Core Protocol Updates
+1. JSON-RPC Updates
+   - Add support for message batching
+   - Update message validation
+   - Enhance error handling
 
----
+2. Tool Enhancements
+   - Add tool annotations (readOnlyHint, destructiveHint, etc.)
+   - Update tool response formats
+   - Implement completions capability
 
-## 2. MCP Server Scaffolding
+3. Protocol Compliance
+   - Update initialization handshake
+   - Update error codes and messages
+   - Add support for new content types
 
-- Set up a new Node.js/TypeScript project for the MCP server.
-- Implement stdio or SSE protocol for MCP tool communication.
-- Configure environment variable management (dotenv).
+### Phase 2: Transport Layer
+1. Streamable HTTP Implementation
+   - Add HTTP transport support
+   - Implement SSE streaming
+   - Add session management
+   - Add Origin validation
+   - Configure localhost-only binding
 
----
+2. STDIO Transport Updates
+   - Update for batching support
+   - Enhance error handling
+   - Add session support
 
-## 3. Tool Implementation
+3. Transport Security
+   - Implement proper headers
+   - Add CORS configuration
+   - Add rate limiting
 
-Implement each MCP tool as a discrete module, following the provided schemas:
+### Phase 3: Authorization
+1. OAuth 2.1 Implementation
+   - Add authorization endpoints
+   - Implement OAuth flows
+   - Add token management
+   - Add session security
 
-- listProjects
-- getProjectDetails
-- createProject
-- updateProject
-- deleteProject
-- generateWork
+2. Security Features
+   - Add metadata discovery
+   - Implement client registration
+   - Add token validation
+   - Add security headers
 
-Each tool:
-- Validates input against schema.
-- Calls the appropriate DeepWriter API endpoint.
-- Handles and maps errors to MCP responses.
-- Returns output in the specified schema.
+3. Rate Limiting
+   - Add request tracking
+   - Implement rate limits
+   - Add usage monitoring
+   - Add error responses
 
----
+### Phase 4: Enhanced Features
+1. Completions Support
+   - Add completions capability
+   - Implement argument suggestions
+   - Add resource completion
+   - Add prompt completion
 
-## 4. API Integration
+2. Progress & Content
+   - Update progress notifications
+   - Add message field support
+   - Add audio content type
+   - Enhance resource handling
 
-- Use fetch (node-fetch or native) for HTTP requests.
-- Pass API key in x-api-key header.
-- Use HTTPS for all requests.
-- Implement retry logic for transient failures.
+3. Error Handling
+   - Update error responses
+   - Add detailed messages
+   - Implement logging
+   - Add debugging support
 
----
+### Phase 5: Testing & Documentation
+1. Testing
+   - Update test suite
+   - Add new test cases
+   - Test all transports
+   - Test authorization
+   - Test rate limiting
 
-## 5. Error Handling & Security
+2. Documentation
+   - Update API docs
+   - Add security guide
+   - Add upgrade guide
+   - Update examples
 
-- Centralized error handler for mapping API errors (401, 403, 404, 400, 500).
-- Never log API keys or sensitive data.
-- Input sanitization and validation.
-- Enforce rate limiting and monitor for abuse.
+3. Security Review
+   - Audit code
+   - Check dependencies
+   - Review configurations
+   - Test security measures
 
----
+## Timeline
+- Phase 1: 1 week
+- Phase 2: 1 week
+- Phase 3: 1 week
+- Phase 4: 1 week
+- Phase 5: 1 week
 
-## 6. Logging & Resources
+Total estimated time: 5 weeks
 
-- Log activity and errors (excluding sensitive data) for debugging and transparency.
-- Expose resources for:
-  - API key validation status
-  - Current rate limits
-  - Usage statistics
-  - Error logs
-  - Request history
+## Success Criteria
+1. All features from MCP spec 2025-03-26 implemented
+2. Passing test suite
+3. Updated documentation
+4. Security review completed
+5. Successful integration with Claude Desktop
 
----
+## Risks and Mitigations
+1. Risk: Breaking changes for existing clients
+   - Mitigation: Version support, upgrade guide
 
-## 7. Testing
+2. Risk: Security vulnerabilities
+   - Mitigation: Security review, testing
 
-- Write unit and integration tests for all tools and error cases.
-- Test rate limiting, retry logic, and input validation.
+3. Risk: Performance issues
+   - Mitigation: Load testing, monitoring
 
----
-
-## 8. Documentation & Maintenance
-
-- Document usage, endpoints, and maintenance procedures.
-- Monitor for DeepWriter API changes and update as needed.
-- Maintain up-to-date schemas and error handling.
-
----
-
-## High-Level Architecture
-
-```mermaid
-flowchart TD
-    User -- MCP Tool Request --> MCPServer
-    MCPServer -- API Call --> DeepWriterAPI
-    DeepWriterAPI -- Response --> MCPServer
-    MCPServer -- Tool Response --> User
-
-    subgraph MCPServer
-        Tools[listProjects, getProjectDetails, createProject, updateProject, deleteProject, generateWork]
-        Logging
-        ErrorHandling
-        Security
-        Resources
-    end
-```
-
----
-
-## Next Steps
-
-1. Review and approve this plan.
-2. Switch to implementation mode and begin scaffolding the MCP server project.
+4. Risk: Integration issues
+   - Mitigation: Thorough testing, fallbacks

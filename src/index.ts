@@ -1,16 +1,81 @@
 import * as dotenv from 'dotenv';
-dotenv.config(); // Load environment variables early if needed globally or by API client internally
+dotenv.config();
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { TextContent, Tool } from '@modelcontextprotocol/sdk/types.js';
 import { z } from "zod";
-import { listProjectsTool } from './tools/listProjects';
-import { getProjectDetailsTool } from './tools/getProjectDetails';
-import { createProjectTool } from './tools/createProject';
-import { updateProjectTool } from './tools/updateProject';
-import { deleteProjectTool } from './tools/deleteProject';
-import { generateWorkTool } from './tools/generateWork';
-import { TextContent } from '@modelcontextprotocol/sdk/types'; // Import TextContent type
+
+// Define interfaces for tool responses
+interface ToolResult {
+  content: TextContent[];
+  isError?: boolean;
+}
+
+interface ToolAnnotations {
+  title?: string;
+  readOnlyHint?: boolean;
+  destructiveHint?: boolean;
+  idempotentHint?: boolean;
+  openWorldHint?: boolean;
+}
+
+// Type for tool response
+interface ToolResponse {
+  content: TextContent[];
+  annotations?: ToolAnnotations;
+}
+import { listProjectsTool } from './tools/listProjects.js';
+import { getProjectDetailsTool } from './tools/getProjectDetails.js';
+import { createProjectTool } from './tools/createProject.js';
+import { updateProjectTool } from './tools/updateProject.js';
+import { deleteProjectTool } from './tools/deleteProject.js';
+import { generateWorkTool } from './tools/generateWork.js';
+
+// Define specific interfaces for each tool's parameters
+interface ListProjectsParams {
+  api_key: string;
+}
+
+interface GetProjectDetailsParams {
+  api_key: string;
+  project_id: string;
+}
+
+interface CreateProjectParams {
+  api_key: string;
+  title: string;
+  email: string;
+}
+
+interface UpdateProjectParams {
+  api_key: string;
+  project_id: string;
+  updates: {
+    author?: string;
+    email?: string;
+    model?: string;
+    outline_text?: string;
+    prompt?: string;
+    style_text?: string;
+    supplemental_info?: string;
+    title?: string;
+    work_description?: string;
+    work_details?: string;
+    work_vision?: string;
+  };
+}
+
+interface DeleteProjectParams {
+  api_key: string;
+  project_id: string;
+}
+
+interface GenerateWorkParams {
+  api_key: string;
+  project_id: string;
+  is_default?: boolean;
+}
 
 console.error("DeepWriter MCP Server starting with SDK...");
 
@@ -76,10 +141,10 @@ const server = new McpServer({
   name: "deepwriter-mcp",
   version: "1.0.0",
   capabilities: {
-    // Declare capabilities - only tools in this case
-    tools: { listChanged: false }, // Set listChanged to true if tools can change dynamically
-    // resources: {}, // Declare if exposing resources
-    // prompts: {}, // Declare if exposing prompts
+    tools: {
+      listChanged: false,
+      completions: true // Enable argument completion suggestions
+    },
     logging: {} // Enable logging capability
   }
 });
@@ -92,15 +157,18 @@ server.tool(
   {
     api_key: z.string().describe("The DeepWriter API key for authentication.")
   },
-  async ({ api_key }) => {
-    // The SDK wrapper handles the final response structure.
-    // The tool's execute function should return the array for the 'content' field.
-    // Or throw an error, which the SDK will format correctly.
+  async ({ api_key }: ListProjectsParams) => {
     console.error(`SDK invoking ${listProjectsTool.name}...`);
     const result = await listProjectsTool.execute({ api_key });
-    // Return the result in the format expected by the SDK
     return {
-      content: result.content
+      content: result.content,
+      annotations: {
+        title: "List Projects",
+        readOnlyHint: true, // This tool only reads data
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false // Only accesses DeepWriter API
+      }
     };
   }
 );
@@ -112,11 +180,18 @@ server.tool(
     api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to retrieve details for.")
   },
-  async ({ api_key, project_id }) => {
+  async ({ api_key, project_id }: GetProjectDetailsParams) => {
     console.error(`SDK invoking ${getProjectDetailsTool.name}...`);
     const result = await getProjectDetailsTool.execute({ api_key, project_id });
     return {
-      content: result.content
+      content: result.content,
+      annotations: {
+        title: "Get Project Details",
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
+      }
     };
   }
 );
@@ -129,11 +204,18 @@ server.tool(
     title: z.string().describe("The title for the new project."),
     email: z.string().email().describe("The email associated with the project.")
   },
-  async ({ api_key, title, email }) => {
+  async ({ api_key, title, email }: CreateProjectParams) => {
     console.error(`SDK invoking ${createProjectTool.name}...`);
     const result = await createProjectTool.execute({ api_key, title, email });
     return {
-      content: result.content
+      content: result.content,
+      annotations: {
+        title: "Create Project",
+        readOnlyHint: false,
+        destructiveHint: false, // Creates but doesn't destroy
+        idempotentHint: false, // Creates new project each time
+        openWorldHint: false
+      }
     };
   }
 );
@@ -158,11 +240,18 @@ server.tool(
       work_vision: z.string().optional().describe("Vision for the work")
     }).describe("Object containing fields to update.")
   },
-  async ({ api_key, project_id, updates }) => {
+  async ({ api_key, project_id, updates }: UpdateProjectParams) => {
     console.error(`SDK invoking ${updateProjectTool.name}...`);
     const result = await updateProjectTool.execute({ api_key, project_id, updates });
     return {
-      content: result.content
+      content: result.content,
+      annotations: {
+        title: "Update Project",
+        readOnlyHint: false,
+        destructiveHint: false, // Modifies but doesn't destroy
+        idempotentHint: true, // Same updates produce same result
+        openWorldHint: false
+      }
     };
   }
 );
@@ -174,11 +263,18 @@ server.tool(
     api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to delete.")
   },
-  async ({ api_key, project_id }) => {
+  async ({ api_key, project_id }: DeleteProjectParams) => {
     console.error(`SDK invoking ${deleteProjectTool.name}...`);
     const result = await deleteProjectTool.execute({ api_key, project_id });
     return {
-      content: result.content
+      content: result.content,
+      annotations: {
+        title: "Delete Project",
+        readOnlyHint: false,
+        destructiveHint: true, // This is a destructive operation
+        idempotentHint: true, // Deleting already deleted project is safe
+        openWorldHint: false
+      }
     };
   }
 );
@@ -191,11 +287,18 @@ server.tool(
     project_id: z.string().describe("The ID of the project to generate work for."),
     is_default: z.boolean().optional().describe("Whether to use default settings (optional, defaults to true).")
   },
-  async ({ api_key, project_id, is_default }) => {
+  async ({ api_key, project_id, is_default }: GenerateWorkParams) => {
     console.error(`SDK invoking ${generateWorkTool.name}...`);
     const result = await generateWorkTool.execute({ api_key, project_id, is_default });
     return {
-      content: result.content
+      content: result.content,
+      annotations: {
+        title: "Generate Work",
+        readOnlyHint: false,
+        destructiveHint: false, // Creates new content but doesn't destroy
+        idempotentHint: false, // Each generation may be different
+        openWorldHint: true // Uses AI models for generation
+      }
     };
   }
 );

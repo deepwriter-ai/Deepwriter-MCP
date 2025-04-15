@@ -1,4 +1,5 @@
 import fetch from 'node-fetch'; // Using node-fetch for consistency across Node versions
+import { Response } from 'node-fetch';
 
 // TODO: Make base URL configurable (e.g., via environment variables)
 const DEEPWRITER_API_BASE_URL = 'https://www.deepwriter.com/api';

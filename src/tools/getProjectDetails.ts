@@ -1,4 +1,4 @@
-import * as apiClient from '../api/deepwriterClient'; // Import the API client
+import * as apiClient from '../api/deepwriterClient.js'; // Import the API client
 
 // Define input/output types based on schema
 interface GetProjectDetailsInput {
