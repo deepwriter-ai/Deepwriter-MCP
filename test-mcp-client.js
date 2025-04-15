@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 // Path to the MCP server
-const serverPath = path.join(__dirname, 'dist', 'index.js');
+const serverPath = path.join(__dirname, 'build', 'index.js');
 
 // Spawn the MCP server process
 const serverProcess = spawn('node', [serverPath], {

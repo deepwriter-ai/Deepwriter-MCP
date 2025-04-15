@@ -1,227 +1,217 @@
 import * as dotenv from 'dotenv';
-dotenv.config(); // Load environment variables from .env file
+dotenv.config(); // Load environment variables early if needed globally or by API client internally
 
-import * as readline from 'readline';
-import * as process from 'process';
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { z } from "zod";
 import { listProjectsTool } from './tools/listProjects';
 import { getProjectDetailsTool } from './tools/getProjectDetails';
 import { createProjectTool } from './tools/createProject';
 import { updateProjectTool } from './tools/updateProject';
 import { deleteProjectTool } from './tools/deleteProject';
 import { generateWorkTool } from './tools/generateWork';
+import { TextContent } from '@modelcontextprotocol/sdk/types'; // Import TextContent type
 
-console.error("DeepWriter MCP Server starting..."); // Log to stderr
+console.error("DeepWriter MCP Server starting with SDK...");
 
-// --- Environment Variable Check ---
-const apiKey = process.env.DEEPWRITER_API_KEY;
-if (!apiKey) {
-  console.error("FATAL ERROR: DEEPWRITER_API_KEY environment variable not found!");
-  // Optionally exit if the key is absolutely required for the server to function
-  // process.exit(1);
+// --- Environment Variable Check (Optional - SDK doesn't mandate this, but tools might need it) ---
+const apiKeyFromEnv = process.env.DEEPWRITER_API_KEY;
+if (!apiKeyFromEnv) {
+  // Log a warning, but let tools handle missing key if passed via args instead
+  console.error("WARNING: DEEPWRITER_API_KEY environment variable not found! Tools might require it as an argument.");
 } else {
-  console.error("DEEPWRITER_API_KEY environment variable found.");
+  console.error("DEEPWRITER_API_KEY environment variable found (may be used by tools if not passed as arg).");
 }
 
-// --- Tool Registry ---
-// Simple registry, can be expanded later
-const toolRegistry: { [key: string]: { execute: (args: any) => Promise<any>, description?: string } } = {
-  [listProjectsTool.name]: listProjectsTool,
-  [getProjectDetailsTool.name]: getProjectDetailsTool,
-  [createProjectTool.name]: createProjectTool,
-  [updateProjectTool.name]: updateProjectTool,
-  [deleteProjectTool.name]: deleteProjectTool,
-  [generateWorkTool.name]: generateWorkTool,
-  // Add other tools here as they are implemented
-};
-
-// --- MCP Request/Response Types (JSON-RPC 2.0) ---
-interface JsonRpcRequest {
-  jsonrpc: string; // Should be "2.0"
-  id: string | number; // Request identifier
-  method: string; // Method name (e.g., "initialize", "tool_call")
-  params: any; // Method parameters
-}
-
-interface JsonRpcResponse {
-  jsonrpc: string; // Should be "2.0"
-  id: string | number; // Should match request ID
-  result?: any; // Result object (for success)
-  error?: { // Error object (for failure)
-    code: number;
-    message: string;
-    data?: any;
-  };
-}
-
-// Tool call specific types
-interface ToolCallParams {
-  tool_name: string;
-  arguments: any; // Tool arguments object
-}
-
-// --- Stdio Interface ---
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout,
-  terminal: false
+// --- Zod Schemas for Tool Inputs ---
+// Assuming api_key is required for most tools based on listProjects example
+const apiKeySchema = z.object({
+  api_key: z.string().describe("The DeepWriter API key for authentication.")
 });
 
-// --- Request Handling ---
-rl.on('line', async (line) => {
-  let requestId: string | number | null = null;
-  try {
-    const request: JsonRpcRequest = JSON.parse(line);
-    requestId = request.id; // Store request ID early
+const listProjectsInputSchema = apiKeySchema; // Only needs API key
 
-    console.error(`Received request (${requestId}): ${JSON.stringify(request)}`); // Log to stderr
+const getProjectDetailsInputSchema = apiKeySchema.extend({
+  project_id: z.string().describe("The ID of the project to retrieve details for.")
+});
 
-    // Handle different methods
-    if (request.method === 'initialize') {
-      // Handle initialization request
-      const response: JsonRpcResponse = {
-        jsonrpc: "2.0",
-        id: requestId,
-        result: {
-          protocolVersion: "2024-11-05",
-          serverInfo: {
-            name: "deepwriter-mcp",
-            version: "1.0.0"
-          },
-          capabilities: {
-            tools: Object.keys(toolRegistry).reduce((acc, toolName) => {
-              acc[toolName] = {
-                description: toolRegistry[toolName].description || `DeepWriter ${toolName} tool`
-              };
-              return acc;
-            }, {} as Record<string, { description: string }>)
-          }
-        }
-      };
-      process.stdout.write(JSON.stringify(response) + '\n');
-      console.error(`Sent initialization response (${requestId})`);
-    } 
-    else if (request.method === 'notifications/initialized') {
-      // Handle the initialized notification (no response needed)
-      console.error(`Received initialized notification`);
-      // This is a notification, so no response is needed
-    }
-    else if (request.method === 'tools/list') {
-      // Handle tools list request
-      const toolsList = Object.keys(toolRegistry).reduce((acc, toolName) => {
-        acc[toolName] = {
-          description: toolRegistry[toolName].description || `DeepWriter ${toolName} tool`
-        };
-        return acc;
-      }, {} as Record<string, { description: string }>);
-      
-      const response: JsonRpcResponse = {
-        jsonrpc: "2.0",
-        id: requestId,
-        result: toolsList
-      };
-      process.stdout.write(JSON.stringify(response) + '\n');
-      console.error(`Sent tools list response (${requestId})`);
-    }
-    else if (request.method === 'resources/list' || request.method === 'resources/templates/list') {
-      // Handle resources list request (we don't have any resources yet)
-      const response: JsonRpcResponse = {
-        jsonrpc: "2.0",
-        id: requestId,
-        result: {} // Empty object as we don't have any resources yet
-      };
-      process.stdout.write(JSON.stringify(response) + '\n');
-      console.error(`Sent empty resources list response (${requestId})`);
-    }
-    else if (request.method === 'tool_call' || request.method === 'tools/call') {
-      // Handle tool call
-      let toolName: string;
-      let toolArgs: any;
-      
-      // Handle different formats for tool_call vs tools/call
-      if (request.method === 'tool_call') {
-        const params = request.params as ToolCallParams;
-        if (!params.tool_name) {
-          throw new Error("Missing tool_name in tool_call params");
-        }
-        toolName = params.tool_name;
-        toolArgs = params.arguments;
-      } else { // tools/call
-        if (!request.params || !request.params.name) {
-          throw new Error("Missing tool name in tools/call params");
-        }
-        toolName = request.params.name;
-        toolArgs = request.params.arguments || {};
-      }
-      
-      console.error(`Executing tool: ${toolName}`);
-      
-      const tool = toolRegistry[toolName];
-      if (!tool) {
-        throw new Error(`Tool not found: ${toolName}`);
-      }
+const createProjectInputSchema = apiKeySchema.extend({
+  title: z.string().describe("The title for the new project."),
+  email: z.string().email().describe("The email associated with the project.") // Added email
+});
 
-      // Execute the tool
-      const result = await tool.execute(toolArgs);
+// Define the schema for the nested 'updates' object
+const projectUpdatesSchema = z.object({
+    author: z.string().optional().describe("Author of the work"),
+    email: z.string().email().optional().describe("Email associated with the project"),
+    model: z.string().optional().describe("AI model used"),
+    outline_text: z.string().optional().describe("Outline text"),
+    prompt: z.string().optional().describe("Main prompt for generation"),
+    style_text: z.string().optional().describe("Stylistic guidance text"),
+    supplemental_info: z.string().optional().describe("Supplemental information"),
+    title: z.string().optional().describe("New title for the project"),
+    work_description: z.string().optional().describe("Description of the work"),
+    work_details: z.string().optional().describe("Detailed information about the work"),
+    work_vision: z.string().optional().describe("Vision for the work")
+}).describe("Object containing fields to update.");
 
-      // Transform the result to match Claude's expected format
-      let transformedResult: any;
-      
-      // For listProjects, transform projects array to content array
-      if (toolName === 'listProjects' && result.projects) {
-        transformedResult = {
-          content: result.projects.map((project: any) => ({
-            id: project.id,
-            title: project.title,
-            created_at: project.created_at
-          }))
-        };
-      } 
-      // For other tools, keep the original result
-      else {
-        transformedResult = result;
-      }
+const updateProjectInputSchema = apiKeySchema.extend({
+  project_id: z.string().describe("The ID of the project to update."),
+  updates: projectUpdatesSchema // Use the nested schema for updates
+});
 
-      // Send success response
-      const response: JsonRpcResponse = {
-        jsonrpc: "2.0",
-        id: requestId,
-        result: transformedResult
-      };
-      process.stdout.write(JSON.stringify(response) + '\n');
-      console.error(`Sent tool result response (${requestId})`);
-    }
-    else {
-      console.error(`Unsupported method: ${request.method}`);
-      // Send error response for unsupported method
-      const errorResponse: JsonRpcResponse = {
-        jsonrpc: "2.0",
-        id: requestId,
-        error: {
-          code: -32601, // Method not found error code
-          message: `Method not supported: ${request.method}`
-        }
-      };
-      process.stdout.write(JSON.stringify(errorResponse) + '\n');
-    }
+const deleteProjectInputSchema = apiKeySchema.extend({
+  project_id: z.string().describe("The ID of the project to delete.")
+});
 
-  } catch (error) {
-    console.error(`Error processing request (${requestId ?? 'unknown'}): ${error}`);
-    // Send error response in JSON-RPC 2.0 format
-    const errorResponse: JsonRpcResponse = {
-      jsonrpc: "2.0",
-      id: requestId ?? 'error', // Use request ID if available, otherwise 'error'
-      error: {
-        code: -32000, // Server error code
-        message: `Failed to execute tool or process request: ${error instanceof Error ? error.message : String(error)}`
-      }
-    };
-    process.stdout.write(JSON.stringify(errorResponse) + '\n');
+const generateWorkInputSchema = apiKeySchema.extend({
+  project_id: z.string().describe("The ID of the project to generate work for."),
+  prompt: z.string().describe("The prompt or instructions for work generation.")
+  // Add other relevant parameters for generation
+});
+
+
+// --- Initialize MCP Server ---
+const server = new McpServer({
+  name: "deepwriter-mcp",
+  version: "1.0.0",
+  capabilities: {
+    // Declare capabilities - only tools in this case
+    tools: { listChanged: false }, // Set listChanged to true if tools can change dynamically
+    // resources: {}, // Declare if exposing resources
+    // prompts: {}, // Declare if exposing prompts
+    logging: {} // Enable logging capability
   }
 });
 
-rl.on('close', () => {
-  console.error("Input stream closed. Exiting.");
-  process.exit(0);
-});
+// --- Register Tools with SDK ---
 
-console.error("MCP Server ready. Listening on stdin...");
+server.tool(
+  listProjectsTool.name,
+  listProjectsTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication.")
+  },
+  async ({ api_key }) => {
+    // The SDK wrapper handles the final response structure.
+    // The tool's execute function should return the array for the 'content' field.
+    // Or throw an error, which the SDK will format correctly.
+    console.error(`SDK invoking ${listProjectsTool.name}...`);
+    const result = await listProjectsTool.execute({ api_key });
+    // Return the result in the format expected by the SDK
+    return {
+      content: result.content
+    };
+  }
+);
+
+server.tool(
+  getProjectDetailsTool.name,
+  getProjectDetailsTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    project_id: z.string().describe("The ID of the project to retrieve details for.")
+  },
+  async ({ api_key, project_id }) => {
+    console.error(`SDK invoking ${getProjectDetailsTool.name}...`);
+    const result = await getProjectDetailsTool.execute({ api_key, project_id });
+    return {
+      content: result.content
+    };
+  }
+);
+
+server.tool(
+  createProjectTool.name,
+  createProjectTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    title: z.string().describe("The title for the new project."),
+    email: z.string().email().describe("The email associated with the project.")
+  },
+  async ({ api_key, title, email }) => {
+    console.error(`SDK invoking ${createProjectTool.name}...`);
+    const result = await createProjectTool.execute({ api_key, title, email });
+    return {
+      content: result.content
+    };
+  }
+);
+
+server.tool(
+  updateProjectTool.name,
+  updateProjectTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    project_id: z.string().describe("The ID of the project to update."),
+    updates: z.object({
+      author: z.string().optional().describe("Author of the work"),
+      email: z.string().email().optional().describe("Email associated with the project"),
+      model: z.string().optional().describe("AI model used"),
+      outline_text: z.string().optional().describe("Outline text"),
+      prompt: z.string().optional().describe("Main prompt for generation"),
+      style_text: z.string().optional().describe("Stylistic guidance text"),
+      supplemental_info: z.string().optional().describe("Supplemental information"),
+      title: z.string().optional().describe("New title for the project"),
+      work_description: z.string().optional().describe("Description of the work"),
+      work_details: z.string().optional().describe("Detailed information about the work"),
+      work_vision: z.string().optional().describe("Vision for the work")
+    }).describe("Object containing fields to update.")
+  },
+  async ({ api_key, project_id, updates }) => {
+    console.error(`SDK invoking ${updateProjectTool.name}...`);
+    const result = await updateProjectTool.execute({ api_key, project_id, updates });
+    return {
+      content: result.content
+    };
+  }
+);
+
+server.tool(
+  deleteProjectTool.name,
+  deleteProjectTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    project_id: z.string().describe("The ID of the project to delete.")
+  },
+  async ({ api_key, project_id }) => {
+    console.error(`SDK invoking ${deleteProjectTool.name}...`);
+    const result = await deleteProjectTool.execute({ api_key, project_id });
+    return {
+      content: result.content
+    };
+  }
+);
+
+server.tool(
+  generateWorkTool.name,
+  generateWorkTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    project_id: z.string().describe("The ID of the project to generate work for."),
+    is_default: z.boolean().optional().describe("Whether to use default settings (optional, defaults to true).")
+  },
+  async ({ api_key, project_id, is_default }) => {
+    console.error(`SDK invoking ${generateWorkTool.name}...`);
+    const result = await generateWorkTool.execute({ api_key, project_id, is_default });
+    return {
+      content: result.content
+    };
+  }
+);
+
+
+// --- Connect Transport and Run Server ---
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error("MCP Server with SDK ready. Listening via stdio transport...");
+
+  // Keep the server running. The SDK handles the connection lifecycle.
+  // No need for await transport.closed() here. The process should exit when stdin closes.
+}
+
+main().catch((error) => {
+  console.error("Fatal error:", error);
+  process.exit(1);
+});
