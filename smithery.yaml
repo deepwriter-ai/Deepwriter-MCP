@@ -1,0 +1,26 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - deepwriterApiKey
+    properties:
+      deepwriterApiKey:
+        type: string
+        description: DeepWriter API key for authenticating requests against the
+          DeepWriter API
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({
+      command: 'node',
+      args: ['build/index.js'],
+      env: {
+        DEEPWRITER_API_KEY: config.deepwriterApiKey
+      }
+    })
+  exampleConfig:
+    deepwriterApiKey: your_deepwriter_api_key_here

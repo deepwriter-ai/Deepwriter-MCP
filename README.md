@@ -1,4 +1,5 @@
 # DeepWriter MCP Server
+[![smithery badge](https://smithery.ai/badge/@deepwriter-ai/deepwriter-mcp)](https://smithery.ai/server/@deepwriter-ai/deepwriter-mcp)
 
 A Model Context Protocol (MCP) server for interacting with the DeepWriter API. This server provides tools for creating, managing, and generating content for DeepWriter projects through the standardized MCP interface.
 
@@ -20,6 +21,15 @@ A Model Context Protocol (MCP) server for interacting with the DeepWriter API. T
 
 ## Installation
 
+### Installing via Smithery
+
+To install deepwriter-mcp for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@deepwriter-ai/deepwriter-mcp):
+
+```bash
+npx -y @smithery/cli install @deepwriter-ai/deepwriter-mcp --client claude
+```
+
+### Manual Installation
 1. Clone the repository:
    ```bash
    git clone https://github.com/yourusername/deepwriter-mcp.git
