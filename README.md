@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server for interacting with the DeepWriter API. This server provides tools for creating, managing, and generating content for DeepWriter projects through the standardized MCP interface.
 
+<a href="https://glama.ai/mcp/servers/@deepwriter-ai/Deepwriter-MCP">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@deepwriter-ai/Deepwriter-MCP/badge" alt="DeepWriter Server MCP server" />
+</a>
+
 ## Features
 
 - **Project Management**: Create, list, update, and delete projects
