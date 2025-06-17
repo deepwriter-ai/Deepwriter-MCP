@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/deepwriter-ai-deepwriter-mcp-badge.png)](https://mseep.ai/app/deepwriter-ai-deepwriter-mcp)
+
 # DeepWriter MCP Server
 [![smithery badge](https://smithery.ai/badge/@deepwriter-ai/deepwriter-mcp)](https://smithery.ai/server/@deepwriter-ai/deepwriter-mcp)
 
