@@ -30,7 +30,9 @@ import { getProjectDetailsTool } from './tools/getProjectDetails.js';
 import { createProjectTool } from './tools/createProject.js';
 import { updateProjectTool } from './tools/updateProject.js';
 import { deleteProjectTool } from './tools/deleteProject.js';
-import { generateWorkTool } from './tools/generateWork.js';
+import { generateWizardWorkTool } from './tools/generateWork.js';
+import { formatPromptTool } from './tools/formatPrompt.js';
+import { uploadProjectFilesTool } from './tools/uploadProjectFiles.js';
 
 // Define specific interfaces for each tool's parameters
 interface ListProjectsParams {
@@ -71,10 +73,34 @@ interface DeleteProjectParams {
   project_id: string;
 }
 
-interface GenerateWorkParams {
+interface GenerateWizardWorkParams {
   api_key: string;
   project_id: string;
-  is_default?: boolean;
+  prompt: string;
+  author: string;
+  email: string;
+  outline_text?: string;
+  has_technical_diagrams?: 'auto' | 'on' | 'off';
+  has_tableofcontents?: 'auto' | 'on' | 'off';
+  use_web_research?: 'auto' | 'on' | 'off';
+  page_length?: string;
+  questions_and_answers?: string;
+  mode?: 'deepwriter' | 'benchmark' | 'romance' | 'homework' | 'deepseek' | 'skunkworks';
+  isDefault?: boolean;
+  max_pages?: number;
+  free_trial_mode?: 'true' | 'false';
+}
+
+interface FormatPromptParams {
+  api_key: string;
+  prompt: string;
+  project_id?: string;
+}
+
+interface UploadProjectFilesParams {
+  api_key: string;
+  project_id: string;
+  files: File[];
 }
 
 console.error("DeepWriter MCP Server starting with SDK...");
@@ -129,10 +155,31 @@ const deleteProjectInputSchema = apiKeySchema.extend({
   project_id: z.string().describe("The ID of the project to delete.")
 });
 
-const generateWorkInputSchema = apiKeySchema.extend({
+const generateWizardWorkInputSchema = apiKeySchema.extend({
   project_id: z.string().describe("The ID of the project to generate work for."),
-  prompt: z.string().describe("The prompt or instructions for work generation.")
-  // Add other relevant parameters for generation
+  prompt: z.string().describe("Main generation prompt describing the content to create."),
+  author: z.string().describe("Author name for the document."),
+  email: z.string().email().describe("Author email address."),
+  outline_text: z.string().optional().describe("Additional outline instructions or structure guidance."),
+  has_technical_diagrams: z.enum(['auto', 'on', 'off']).optional().describe("Whether to include technical diagrams."),
+  has_tableofcontents: z.enum(['auto', 'on', 'off']).optional().describe("Whether to include table of contents."),
+  use_web_research: z.enum(['auto', 'on', 'off']).optional().describe("Whether to use web research."),
+  page_length: z.string().optional().describe("Desired document length specification."),
+  questions_and_answers: z.string().optional().describe("JSON string of follow-up questions and answers."),
+  mode: z.enum(['deepwriter', 'benchmark', 'romance', 'homework', 'deepseek', 'skunkworks']).optional().describe("Content generation mode."),
+  isDefault: z.boolean().optional().describe("Whether to use default system API key."),
+  max_pages: z.number().min(1).max(350).optional().describe("Maximum pages allowed for generation."),
+  free_trial_mode: z.enum(['true', 'false']).optional().describe("Whether user is on free trial.")
+});
+
+const formatPromptInputSchema = apiKeySchema.extend({
+  prompt: z.string().describe("The prompt to format and enhance."),
+  project_id: z.string().optional().describe("Associated project ID for file access.")
+});
+
+const uploadProjectFilesInputSchema = apiKeySchema.extend({
+  project_id: z.string().describe("The ID of the project to associate files with."),
+  files: z.array(z.any()).describe("Array of File objects to upload.")
 });
 
 
@@ -280,24 +327,84 @@ server.tool(
 );
 
 server.tool(
-  generateWorkTool.name,
-  generateWorkTool.description,
+  generateWizardWorkTool.name,
+  generateWizardWorkTool.description,
   {
     api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to generate work for."),
-    is_default: z.boolean().optional().describe("Whether to use default settings (optional, defaults to true).")
+    prompt: z.string().describe("Main generation prompt describing the content to create."),
+    author: z.string().describe("Author name for the document."),
+    email: z.string().email().describe("Author email address."),
+    outline_text: z.string().optional().describe("Additional outline instructions or structure guidance."),
+    has_technical_diagrams: z.enum(['auto', 'on', 'off']).optional().describe("Whether to include technical diagrams."),
+    has_tableofcontents: z.enum(['auto', 'on', 'off']).optional().describe("Whether to include table of contents."),
+    use_web_research: z.enum(['auto', 'on', 'off']).optional().describe("Whether to use web research."),
+    page_length: z.string().optional().describe("Desired document length specification."),
+    questions_and_answers: z.string().optional().describe("JSON string of follow-up questions and answers."),
+    mode: z.enum(['deepwriter', 'benchmark', 'romance', 'homework', 'deepseek', 'skunkworks']).optional().describe("Content generation mode."),
+    isDefault: z.boolean().optional().describe("Whether to use default system API key."),
+    max_pages: z.number().min(1).max(350).optional().describe("Maximum pages allowed for generation."),
+    free_trial_mode: z.enum(['true', 'false']).optional().describe("Whether user is on free trial.")
   },
-  async ({ api_key, project_id, is_default }: GenerateWorkParams) => {
-    console.error(`SDK invoking ${generateWorkTool.name}...`);
-    const result = await generateWorkTool.execute({ api_key, project_id, is_default });
+  async (params: GenerateWizardWorkParams) => {
+    console.error(`SDK invoking ${generateWizardWorkTool.name}...`);
+    const result = await generateWizardWorkTool.execute(params);
     return {
       content: result.content,
       annotations: {
-        title: "Generate Work",
+        title: "Generate Wizard Work",
         readOnlyHint: false,
-        destructiveHint: false, // Creates new content but doesn't destroy
-        idempotentHint: false, // Each generation may be different
-        openWorldHint: true // Uses AI models for generation
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: true
+      }
+    };
+  }
+);
+
+server.tool(
+  formatPromptTool.name,
+  formatPromptTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    prompt: z.string().describe("The prompt to format and enhance."),
+    project_id: z.string().optional().describe("Associated project ID for file access.")
+  },
+  async ({ api_key, prompt, project_id }: FormatPromptParams) => {
+    console.error(`SDK invoking ${formatPromptTool.name}...`);
+    const result = await formatPromptTool.execute({ api_key, prompt, project_id });
+    return {
+      content: result.content,
+      annotations: {
+        title: "Format Prompt",
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true
+      }
+    };
+  }
+);
+
+server.tool(
+  uploadProjectFilesTool.name,
+  uploadProjectFilesTool.description,
+  {
+    api_key: z.string().describe("The DeepWriter API key for authentication."),
+    project_id: z.string().describe("The ID of the project to associate files with."),
+    files: z.array(z.any()).describe("Array of File objects to upload.")
+  },
+  async ({ api_key, project_id, files }: UploadProjectFilesParams) => {
+    console.error(`SDK invoking ${uploadProjectFilesTool.name}...`);
+    const result = await uploadProjectFilesTool.execute({ api_key, project_id, files });
+    return {
+      content: result.content,
+      annotations: {
+        title: "Upload Project Files",
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: false,
+        openWorldHint: false
       }
     };
   }

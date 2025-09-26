@@ -2,7 +2,7 @@ import fetch from 'node-fetch'; // Using node-fetch for consistency across Node 
 import { Response } from 'node-fetch';
 
 // TODO: Make base URL configurable (e.g., via environment variables)
-const DEEPWRITER_API_BASE_URL = 'https://www.deepwriter.com/api';
+const DEEPWRITER_API_BASE_URL = 'https://app.deepwriter.com/api';
 
 interface ApiErrorResponse {
   message: string;
@@ -224,33 +224,175 @@ export async function deleteProject(apiKey: string, projectId: string): Promise<
   return response as DeleteProjectResponse;
 }
 
-// --- generateWork ---
+// --- generateWizardWork ---
 
-interface GenerateWorkInputBody {
+interface GenerateWizardWorkInputBody {
   projectId: string;
-  is_default?: boolean; // Optional based on schema, default is true
+  prompt: string;
+  author: string;
+  email: string;
+  outline_text?: string;
+  has_technical_diagrams?: 'auto' | 'on' | 'off';
+  has_tableofcontents?: 'auto' | 'on' | 'off';
+  use_web_research?: 'auto' | 'on' | 'off';
+  page_length?: string;
+  questions_and_answers?: string; // JSON string
+  mode?: 'deepwriter' | 'benchmark' | 'romance' | 'homework' | 'deepseek' | 'skunkworks';
+  isDefault?: boolean;
+  max_pages?: number;
+  free_trial_mode?: 'true' | 'false';
 }
 
-export interface GenerateWorkResponse {
+export interface GenerateWizardWorkResponse {
+  message: string;
   jobId: string; // ID of the generated job
 }
 
-export async function generateWork(
+export async function generateWizardWork(
   apiKey: string,
-  projectId: string,
-  isDefault: boolean = true // Default value from schema
-): Promise<GenerateWorkResponse> {
-  console.error(`Calling actual generateWork API for project ID: ${projectId}`);
+  params: GenerateWizardWorkInputBody
+): Promise<GenerateWizardWorkResponse> {
+  console.error(`Calling actual generateWizardWork API for project ID: ${params.projectId}`);
   if (!apiKey) {
-    throw new Error("API key is required for generateWork");
+    throw new Error("API key is required for generateWizardWork");
   }
-  if (!projectId) {
-    throw new Error("Project ID is required for generateWork");
+  if (!params.projectId) {
+    throw new Error("Project ID is required for generateWizardWork");
+  }
+  if (!params.prompt) {
+    throw new Error("Prompt is required for generateWizardWork");
+  }
+  if (!params.author) {
+    throw new Error("Author is required for generateWizardWork");
+  }
+  if (!params.email) {
+    throw new Error("Email is required for generateWizardWork");
   }
 
-  const body: GenerateWorkInputBody = {
-    projectId: projectId,
-    is_default: isDefault,
+  return makeApiRequest<GenerateWizardWorkResponse>('/generateWizardWork', apiKey, 'POST', params);
+}
+
+// --- formatPrompt ---
+
+interface FormatPromptInputBody {
+  prompt: string;
+  projectId?: string;
+}
+
+export interface FormatPromptResponse {
+  formatted_prompt: string;
+}
+
+export async function formatPrompt(
+  apiKey: string,
+  prompt: string,
+  projectId?: string
+): Promise<FormatPromptResponse> {
+  console.error(`Calling actual formatPrompt API`);
+  if (!apiKey) {
+    throw new Error("API key is required for formatPrompt");
+  }
+  if (!prompt) {
+    throw new Error("Prompt is required for formatPrompt");
+  }
+
+  const body: FormatPromptInputBody = {
+    prompt: prompt,
+    ...(projectId && { projectId: projectId })
   };
-  return makeApiRequest<GenerateWorkResponse>('/generateWork', apiKey, 'POST', body);
+  return makeApiRequest<FormatPromptResponse>('/formatPrompt', apiKey, 'POST', body);
+}
+
+// --- uploadProjectFiles ---
+
+export interface ProjectFileResponse {
+  id: string;
+  file_name: string;
+  file_type: string;
+  file_size: number;
+  file_url?: string;
+  storage_path: string;
+  uploaded_at: string;
+}
+
+export interface UploadProjectFilesResponse {
+  success: boolean;
+  files: ProjectFileResponse[];
+  summary: {
+    total_files: number;
+    successful_uploads: number;
+    failed_uploads: number;
+    errors: Array<{
+      file_name: string;
+      error: string;
+    }>;
+  };
+}
+
+export async function uploadProjectFiles(
+  apiKey: string,
+  projectId: string,
+  files: File[]
+): Promise<UploadProjectFilesResponse> {
+  console.error(`Calling actual uploadProjectFiles API for project ID: ${projectId}`);
+  if (!apiKey) {
+    throw new Error("API key is required for uploadProjectFiles");
+  }
+  if (!projectId) {
+    throw new Error("Project ID is required for uploadProjectFiles");
+  }
+  if (!files || files.length === 0) {
+    throw new Error("At least one file is required for uploadProjectFiles");
+  }
+
+  const formData = new FormData();
+  formData.append('projectId', projectId);
+  
+  // Add all files to the FormData
+  files.forEach((file) => {
+    formData.append('file', file);
+  });
+
+  const url = `${DEEPWRITER_API_BASE_URL}/uploadProjectFiles`;
+  const headers = {
+    'x-api-key': apiKey,
+    'Origin': DEEPWRITER_API_BASE_URL.replace('/api', ''),
+    // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
+  };
+
+  console.error(`Making file upload request: POST ${url}`);
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      let errorBodyText = await response.text();
+      let errorMessage = `File upload failed: ${response.status} ${response.statusText}`;
+      console.error(`Upload Error ${response.status}: Raw Body ->`, errorBodyText);
+
+      try {
+        const errorJson = JSON.parse(errorBodyText) as ApiErrorResponse;
+        if (errorJson && errorJson.message) {
+          errorMessage += ` - ${errorJson.message}`;
+        } else if (errorBodyText) {
+           errorMessage += ` - ${errorBodyText}`;
+        }
+      } catch (jsonError) {
+         if (errorBodyText) {
+            errorMessage += ` - ${errorBodyText}`;
+         }
+      }
+      throw new Error(errorMessage);
+    }
+
+    return await response.json() as UploadProjectFilesResponse;
+
+  } catch (error) {
+    console.error(`Network or fetch error during file upload: ${error}`);
+    throw new Error(`Failed to upload files to DeepWriter API: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }

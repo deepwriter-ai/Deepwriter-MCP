@@ -1,56 +1,86 @@
-import * as apiClient from '../api/deepwriterClient.js'; // Import the API client
+import * as apiClient from '../api/deepwriterClient.js';
 
 // Define input/output types based on schema
-interface GenerateWorkInputArgs {
+interface GenerateWizardWorkInputArgs {
   api_key: string;
-  projectId?: string;
-  project_id?: string; // Support both naming conventions
-  is_default?: boolean; // Optional, defaults to true in API client
+  project_id: string;
+  prompt: string;
+  author: string;
+  email: string;
+  outline_text?: string;
+  has_technical_diagrams?: 'auto' | 'on' | 'off';
+  has_tableofcontents?: 'auto' | 'on' | 'off';
+  use_web_research?: 'auto' | 'on' | 'off';
+  page_length?: string;
+  questions_and_answers?: string; // JSON string
+  mode?: 'deepwriter' | 'benchmark' | 'romance' | 'homework' | 'deepseek' | 'skunkworks';
+  isDefault?: boolean;
+  max_pages?: number;
+  free_trial_mode?: 'true' | 'false';
 }
 
 // Define the MCP-compliant output structure
-interface GenerateWorkMcpOutput {
+interface GenerateWizardWorkMcpOutput {
   content: { type: 'text'; text: string }[];
 }
 
-export const generateWorkTool = {
-  name: "generateWork",
-  description: "Generate content for a project",
-  // TODO: Add input/output schema validation if needed
-  async execute(args: GenerateWorkInputArgs): Promise<GenerateWorkMcpOutput> {
-    // Support both projectId and project_id
-    const projectId = args.projectId || args.project_id;
-    
-    console.error(`Executing generateWork tool for project ID: ${projectId}...`);
+export const generateWizardWorkTool = {
+  name: "generateWizardWork",
+  description: "Generate content using the enhanced wizard workflow with comprehensive parameter support",
+  async execute(args: GenerateWizardWorkInputArgs): Promise<GenerateWizardWorkMcpOutput> {
+    console.error(`Executing generateWizardWork tool for project ID: ${args.project_id}...`);
 
     if (!args.api_key) {
       throw new Error("Missing required argument: api_key");
     }
-    if (!projectId) {
-      throw new Error("Missing required argument: projectId or project_id");
+    if (!args.project_id) {
+      throw new Error("Missing required argument: project_id");
+    }
+    if (!args.prompt) {
+      throw new Error("Missing required argument: prompt");
+    }
+    if (!args.author) {
+      throw new Error("Missing required argument: author");
+    }
+    if (!args.email) {
+      throw new Error("Missing required argument: email");
     }
 
-    // Use provided is_default or let the API client handle the default (true)
-    const isDefault = args.is_default !== undefined ? args.is_default : true;
-
     try {
+      // Prepare the parameters for the API client
+      const wizardParams = {
+        projectId: args.project_id,
+        prompt: args.prompt,
+        author: args.author,
+        email: args.email,
+        outline_text: args.outline_text,
+        has_technical_diagrams: args.has_technical_diagrams,
+        has_tableofcontents: args.has_tableofcontents,
+        use_web_research: args.use_web_research,
+        page_length: args.page_length,
+        questions_and_answers: args.questions_and_answers,
+        mode: args.mode,
+        isDefault: args.isDefault,
+        max_pages: args.max_pages,
+        free_trial_mode: args.free_trial_mode
+      };
+
       // Call the actual API client function
-      const apiResponse = await apiClient.generateWork(args.api_key, projectId, isDefault);
-      console.error(`API call successful for generateWork. Job ID: ${apiResponse.jobId}`);
+      const apiResponse = await apiClient.generateWizardWork(args.api_key, wizardParams);
+      console.error(`API call successful for generateWizardWork. Job ID: ${apiResponse.jobId}`);
 
       // Transform the API response into MCP format
-      const mcpResponse: GenerateWorkMcpOutput = {
+      const mcpResponse: GenerateWizardWorkMcpOutput = {
         content: [
-          { type: 'text', text: `Successfully started generation job for project ID ${projectId}. Job ID: ${apiResponse.jobId ?? 'N/A'}` }
+          { type: 'text', text: `Successfully started wizard work generation for project ID ${args.project_id}. Job ID: ${apiResponse.jobId}. Message: ${apiResponse.message}` }
         ]
       };
 
-      return mcpResponse; // Return the MCP-compliant structure
+      return mcpResponse;
     } catch (error) {
-      console.error(`Error executing generateWork tool: ${error}`);
-      // Format error for MCP response
+      console.error(`Error executing generateWizardWork tool: ${error}`);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Failed to generate work for project ID ${projectId}: ${errorMessage}`);
+      throw new Error(`Failed to generate wizard work for project ID ${args.project_id}: ${errorMessage}`);
     }
   }
 };

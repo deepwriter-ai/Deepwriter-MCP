@@ -1,35 +1,37 @@
 # Active Context: DeepWriter MCP Server
 
 ## Current Work Focus
-- Debugging and fixing the MCP server to handle the newer JSON-RPC 2.0 protocol format.
-- Ensuring proper initialization handshake with MCP clients.
+- Completed comprehensive API migration to latest DeepWriter APIs
+- Successfully modernized MCP server with enhanced capabilities
+- Ready for production testing and deployment
 
-## Recent Changes
-- Updated the MCP server to support the JSON-RPC 2.0 protocol format.
-- Fixed the request handling to properly process 'initialize' method calls.
-- Updated the response format to match the JSON-RPC 2.0 specification.
-- Fixed TypeScript type definitions for the tool registry.
-- Fixed the initialization response format to include required fields:
-  - Added protocolVersion
-  - Changed tools format from array to object
-  - Added serverInfo object
-- Added support for additional MCP protocol methods:
-  - notifications/initialized
-  - tools/list
-  - resources/list
-  - resources/templates/list
-  - tools/call
-- Transformed tool response formats to match Claude's expectations:
-  - For listProjects: transformed projects array to content array
+## Recent Changes - API Migration (Latest)
+- **API Base URL Migration**: Updated from `https://www.deepwriter.com/api` to `https://app.deepwriter.com/api`
+- **generateWork → generateWizardWork**: Complete replacement with enhanced functionality:
+  - Added 13+ comprehensive parameters (prompt, author, email, outline_text, technical diagrams, TOC, web research, page_length, questions_and_answers, mode, max_pages, free_trial_mode, isDefault)
+  - Support for multiple generation modes (deepwriter, benchmark, romance, homework, deepseek, skunkworks)
+  - Question/answer refinement system integration
+- **New formatPrompt Tool**: AI-powered prompt enhancement with project file integration
+- **New uploadProjectFiles Tool**: Multi-file upload with 20+ supported file types (PDF, Word, text, code, data files)
+- **Complete TypeScript Migration**: Updated all interfaces, types, and Zod schemas
+- **MCP Server Registration**: All new tools properly registered with comprehensive validation
+
+## Previous Protocol Updates (Maintained)
+- JSON-RPC 2.0 protocol support with proper initialization handshake
+- Tool response format transformation for Claude compatibility
+- Error handling for invalid requests and comprehensive logging
+- Resource exposure capabilities for API validation and usage tracking
 
 ## Next Steps
-1. Test the MCP server with a client to ensure it properly handles the initialization handshake.
-2. Verify that tool calls work correctly with the updated protocol.
-3. Consider adding more robust error handling and logging.
-4. Update documentation to reflect the protocol changes.
+1. Conduct end-to-end testing with Claude and MCP clients
+2. Verify all new tools function correctly with real API calls
+3. Test file upload functionality with various file types
+4. Validate prompt enhancement workflow with project integration
+5. Performance testing and optimization
 
 ## Active Decisions and Considerations
-- Updated the server to use JSON-RPC 2.0 format for MCP protocol compatibility.
-- Added proper handling for the 'initialize' method to support the handshake process.
-- Maintained the existing tool execution logic while updating the request/response format.
-- Ensured TypeScript type safety throughout the changes.
+- **Clean Break Migration**: Completely removed generateWork as requested (no backward compatibility)
+- **Enhanced Parameter Support**: Full support for all new DeepWriter wizard parameters
+- **File Upload Architecture**: Implemented FormData handling with comprehensive validation
+- **Error Handling Strategy**: Enhanced validation and detailed error reporting for all new endpoints
+- **Type Safety**: Maintained strict TypeScript coverage throughout migration
