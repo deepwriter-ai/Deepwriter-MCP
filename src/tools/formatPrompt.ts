@@ -34,7 +34,11 @@ export const formatPromptTool = {
       // Transform the API response into MCP format
       const mcpResponse: FormatPromptMcpOutput = {
         content: [
-          { type: 'text', text: `Successfully formatted prompt. Enhanced prompt: ${apiResponse.formatted_prompt}` }
+          { type: 'text', text: `Successfully formatted prompt. Enhanced prompt: ${apiResponse.enhanced_prompt}` },
+          ...(apiResponse.questions && apiResponse.questions.length > 0
+            ? [{ type: 'text' as const, text: `Follow-up questions: ${apiResponse.questions.join(', ')}` }]
+            : []
+          )
         ]
       };
 

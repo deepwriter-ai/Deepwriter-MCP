@@ -282,7 +282,8 @@ interface FormatPromptInputBody {
 }
 
 export interface FormatPromptResponse {
-  formatted_prompt: string;
+  enhanced_prompt: string;
+  questions?: string[];
 }
 
 export async function formatPrompt(
