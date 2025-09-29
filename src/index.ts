@@ -34,24 +34,21 @@ import { generateWizardWorkTool } from './tools/generateWork.js';
 import { formatPromptTool } from './tools/formatPrompt.js';
 import { uploadProjectFilesTool } from './tools/uploadProjectFiles.js';
 
-// Define specific interfaces for each tool's parameters
+// Define specific interfaces for each tool's parameters (API key handled via environment)
 interface ListProjectsParams {
-  api_key: string;
+  // No parameters - API key from environment
 }
 
 interface GetProjectDetailsParams {
-  api_key: string;
   project_id: string;
 }
 
 interface CreateProjectParams {
-  api_key: string;
   title: string;
   email: string;
 }
 
 interface UpdateProjectParams {
-  api_key: string;
   project_id: string;
   updates: {
     author?: string;
@@ -69,12 +66,10 @@ interface UpdateProjectParams {
 }
 
 interface DeleteProjectParams {
-  api_key: string;
   project_id: string;
 }
 
 interface GenerateWizardWorkParams {
-  api_key: string;
   project_id: string;
   prompt: string;
   author: string;
@@ -92,43 +87,36 @@ interface GenerateWizardWorkParams {
 }
 
 interface FormatPromptParams {
-  api_key: string;
   prompt: string;
   project_id?: string;
 }
 
 interface UploadProjectFilesParams {
-  api_key: string;
   project_id: string;
   files: File[];
 }
 
 console.error("DeepWriter MCP Server starting with SDK...");
 
-// --- Environment Variable Check (Optional - SDK doesn't mandate this, but tools might need it) ---
+// --- Environment Variable Check (Required - All tools use this) ---
 const apiKeyFromEnv = process.env.DEEPWRITER_API_KEY;
 if (!apiKeyFromEnv) {
-  // Log a warning, but let tools handle missing key if passed via args instead
-  console.error("WARNING: DEEPWRITER_API_KEY environment variable not found! Tools might require it as an argument.");
+  console.error("ERROR: DEEPWRITER_API_KEY environment variable is required for all tools!");
+  process.exit(1);
 } else {
-  console.error("DEEPWRITER_API_KEY environment variable found (may be used by tools if not passed as arg).");
+  console.error("DEEPWRITER_API_KEY environment variable found and will be used by all tools.");
 }
 
-// --- Zod Schemas for Tool Inputs ---
-// Assuming api_key is required for most tools based on listProjects example
-const apiKeySchema = z.object({
-  api_key: z.string().describe("The DeepWriter API key for authentication.")
-});
+// --- Zod Schemas for Tool Inputs (API key handled via environment) ---
+const listProjectsInputSchema = z.object({}); // No parameters needed
 
-const listProjectsInputSchema = apiKeySchema; // Only needs API key
-
-const getProjectDetailsInputSchema = apiKeySchema.extend({
+const getProjectDetailsInputSchema = z.object({
   project_id: z.string().describe("The ID of the project to retrieve details for.")
 });
 
-const createProjectInputSchema = apiKeySchema.extend({
+const createProjectInputSchema = z.object({
   title: z.string().describe("The title for the new project."),
-  email: z.string().email().describe("The email associated with the project.") // Added email
+  email: z.string().email().describe("The email associated with the project.")
 });
 
 // Define the schema for the nested 'updates' object
@@ -146,16 +134,16 @@ const projectUpdatesSchema = z.object({
     work_vision: z.string().optional().describe("Vision for the work")
 }).describe("Object containing fields to update.");
 
-const updateProjectInputSchema = apiKeySchema.extend({
+const updateProjectInputSchema = z.object({
   project_id: z.string().describe("The ID of the project to update."),
   updates: projectUpdatesSchema // Use the nested schema for updates
 });
 
-const deleteProjectInputSchema = apiKeySchema.extend({
+const deleteProjectInputSchema = z.object({
   project_id: z.string().describe("The ID of the project to delete.")
 });
 
-const generateWizardWorkInputSchema = apiKeySchema.extend({
+const generateWizardWorkInputSchema = z.object({
   project_id: z.string().describe("The ID of the project to generate work for."),
   prompt: z.string().describe("Main generation prompt describing the content to create."),
   author: z.string().describe("Author name for the document."),
@@ -172,12 +160,12 @@ const generateWizardWorkInputSchema = apiKeySchema.extend({
   free_trial_mode: z.enum(['true', 'false']).optional().describe("Whether user is on free trial.")
 });
 
-const formatPromptInputSchema = apiKeySchema.extend({
+const formatPromptInputSchema = z.object({
   prompt: z.string().describe("The prompt to format and enhance."),
   project_id: z.string().optional().describe("Associated project ID for file access.")
 });
 
-const uploadProjectFilesInputSchema = apiKeySchema.extend({
+const uploadProjectFilesInputSchema = z.object({
   project_id: z.string().describe("The ID of the project to associate files with."),
   files: z.array(z.any()).describe("Array of File objects to upload.")
 });
@@ -202,11 +190,11 @@ server.tool(
   listProjectsTool.name,
   listProjectsTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication.")
+    // No parameters - API key from environment
   },
-  async ({ api_key }: ListProjectsParams) => {
+  async (params: ListProjectsParams) => {
     console.error(`SDK invoking ${listProjectsTool.name}...`);
-    const result = await listProjectsTool.execute({ api_key });
+    const result = await listProjectsTool.execute({});
     return {
       content: result.content,
       annotations: {
@@ -224,12 +212,11 @@ server.tool(
   getProjectDetailsTool.name,
   getProjectDetailsTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to retrieve details for.")
   },
-  async ({ api_key, project_id }: GetProjectDetailsParams) => {
+  async ({ project_id }: GetProjectDetailsParams) => {
     console.error(`SDK invoking ${getProjectDetailsTool.name}...`);
-    const result = await getProjectDetailsTool.execute({ api_key, project_id });
+    const result = await getProjectDetailsTool.execute({ project_id });
     return {
       content: result.content,
       annotations: {
@@ -247,13 +234,12 @@ server.tool(
   createProjectTool.name,
   createProjectTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     title: z.string().describe("The title for the new project."),
     email: z.string().email().describe("The email associated with the project.")
   },
-  async ({ api_key, title, email }: CreateProjectParams) => {
+  async ({ title, email }: CreateProjectParams) => {
     console.error(`SDK invoking ${createProjectTool.name}...`);
-    const result = await createProjectTool.execute({ api_key, title, email });
+    const result = await createProjectTool.execute({ title, email });
     return {
       content: result.content,
       annotations: {
@@ -271,7 +257,6 @@ server.tool(
   updateProjectTool.name,
   updateProjectTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to update."),
     updates: z.object({
       author: z.string().optional().describe("Author of the work"),
@@ -287,9 +272,9 @@ server.tool(
       work_vision: z.string().optional().describe("Vision for the work")
     }).describe("Object containing fields to update.")
   },
-  async ({ api_key, project_id, updates }: UpdateProjectParams) => {
+  async ({ project_id, updates }: UpdateProjectParams) => {
     console.error(`SDK invoking ${updateProjectTool.name}...`);
-    const result = await updateProjectTool.execute({ api_key, project_id, updates });
+    const result = await updateProjectTool.execute({ project_id, updates });
     return {
       content: result.content,
       annotations: {
@@ -307,12 +292,11 @@ server.tool(
   deleteProjectTool.name,
   deleteProjectTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to delete.")
   },
-  async ({ api_key, project_id }: DeleteProjectParams) => {
+  async ({ project_id }: DeleteProjectParams) => {
     console.error(`SDK invoking ${deleteProjectTool.name}...`);
-    const result = await deleteProjectTool.execute({ api_key, project_id });
+    const result = await deleteProjectTool.execute({ project_id });
     return {
       content: result.content,
       annotations: {
@@ -330,7 +314,6 @@ server.tool(
   generateWizardWorkTool.name,
   generateWizardWorkTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to generate work for."),
     prompt: z.string().describe("Main generation prompt describing the content to create."),
     author: z.string().describe("Author name for the document."),
@@ -366,13 +349,12 @@ server.tool(
   formatPromptTool.name,
   formatPromptTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     prompt: z.string().describe("The prompt to format and enhance."),
     project_id: z.string().optional().describe("Associated project ID for file access.")
   },
-  async ({ api_key, prompt, project_id }: FormatPromptParams) => {
+  async ({ prompt, project_id }: FormatPromptParams) => {
     console.error(`SDK invoking ${formatPromptTool.name}...`);
-    const result = await formatPromptTool.execute({ api_key, prompt, project_id });
+    const result = await formatPromptTool.execute({ prompt, project_id });
     return {
       content: result.content,
       annotations: {
@@ -390,13 +372,12 @@ server.tool(
   uploadProjectFilesTool.name,
   uploadProjectFilesTool.description,
   {
-    api_key: z.string().describe("The DeepWriter API key for authentication."),
     project_id: z.string().describe("The ID of the project to associate files with."),
     files: z.array(z.any()).describe("Array of File objects to upload.")
   },
-  async ({ api_key, project_id, files }: UploadProjectFilesParams) => {
+  async ({ project_id, files }: UploadProjectFilesParams) => {
     console.error(`SDK invoking ${uploadProjectFilesTool.name}...`);
-    const result = await uploadProjectFilesTool.execute({ api_key, project_id, files });
+    const result = await uploadProjectFilesTool.execute({ project_id, files });
     return {
       content: result.content,
       annotations: {

@@ -1,8 +1,7 @@
 import * as apiClient from '../api/deepwriterClient.js';
 
-// Define input/output types based on schema
+// Define input/output types based on schema (API key from environment)
 interface FormatPromptInputArgs {
-  api_key: string;
   prompt: string;
   project_id?: string;
 }
@@ -18,8 +17,10 @@ export const formatPromptTool = {
   async execute(args: FormatPromptInputArgs): Promise<FormatPromptMcpOutput> {
     console.error(`Executing formatPrompt tool...`);
 
-    if (!args.api_key) {
-      throw new Error("Missing required argument: api_key");
+    // Get API key from environment
+    const apiKey = process.env.DEEPWRITER_API_KEY;
+    if (!apiKey) {
+      throw new Error("DEEPWRITER_API_KEY environment variable is required");
     }
     if (!args.prompt) {
       throw new Error("Missing required argument: prompt");
@@ -27,7 +28,7 @@ export const formatPromptTool = {
 
     try {
       // Call the actual API client function
-      const apiResponse = await apiClient.formatPrompt(args.api_key, args.prompt, args.project_id);
+      const apiResponse = await apiClient.formatPrompt(apiKey, args.prompt, args.project_id);
       console.error(`API call successful for formatPrompt.`);
 
       // Transform the API response into MCP format

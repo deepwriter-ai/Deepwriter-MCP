@@ -1,8 +1,7 @@
-import fetch from 'node-fetch'; // Using node-fetch for consistency across Node versions
-import { Response } from 'node-fetch';
+// Using native fetch and FormData (available in Node.js 18+)
 
 // TODO: Make base URL configurable (e.g., via environment variables)
-const DEEPWRITER_API_BASE_URL = 'https://app.deepwriter.com/api';
+const DEEPWRITER_API_BASE_URL = 'https://app.deepwriter.com';
 
 interface ApiErrorResponse {
   message: string;
@@ -88,7 +87,7 @@ export async function listProjects(apiKey: string): Promise<ListProjectsResponse
     throw new Error("API key is required for listProjects");
   }
   // Actual implementation:
-  return makeApiRequest<ListProjectsResponse>('/listProjects', apiKey, 'GET');
+  return makeApiRequest<ListProjectsResponse>('/api/listProjects', apiKey, 'GET');
 }
 
 // --- getProjectDetails ---
@@ -122,16 +121,15 @@ export async function getProjectDetails(apiKey: string, projectId: string): Prom
   if (!projectId) {
     throw new Error("Project ID is required for getProjectDetails");
   }
-  const endpoint = `/getProjectDetails?projectId=${encodeURIComponent(projectId)}`;
+  const endpoint = `/api/getProjectDetails?projectId=${encodeURIComponent(projectId)}`;
   return makeApiRequest<GetProjectDetailsResponse>(endpoint, apiKey, 'GET');
 }
 
 // --- createProject ---
 
-// Input body structure expected by the API
+// Input body structure expected by the API (only newProjectName based on demo script)
 interface CreateProjectApiInput {
-  newProjectName: string; // API expects 'name', not 'title'
-  email: string;
+  newProjectName: string; // API expects only project name
 }
 
 export interface CreateProjectResponse {
@@ -139,20 +137,18 @@ export interface CreateProjectResponse {
 }
 
 export async function createProject(apiKey: string, title: string, email: string): Promise<CreateProjectResponse> {
-  console.error(`Calling actual createProject API with title: ${title}, email: ${email}`);
+  console.error(`Calling actual createProject API with title: ${title}`);
   if (!apiKey) {
     throw new Error("API key is required for createProject");
   }
   if (!title || title.trim() === '') {
     throw new Error("Project title is required for createProject");
   }
-    if (!email || title.trim() === '') {
-    throw new Error("Project email is required for createProject");
-  }
+  // Note: email parameter accepted for MCP interface compatibility but not sent to API
 
-  // Use the correct field name 'newProjectName' for the API request body
-  const body: CreateProjectApiInput = { newProjectName: title, email: email };
-  return makeApiRequest<CreateProjectResponse>('/createProject', apiKey, 'POST', body);
+  // Use the correct field name 'newProjectName' for the API request body (email not needed)
+  const body: CreateProjectApiInput = { newProjectName: title };
+  return makeApiRequest<CreateProjectResponse>('/api/createProject', apiKey, 'POST', body);
 }
 
 // --- updateProject ---
@@ -192,7 +188,7 @@ export async function updateProject(
     throw new Error("Updates object cannot be empty for updateProject");
   }
 
-  const endpoint = `/updateProject?projectId=${encodeURIComponent(projectId)}`;
+  const endpoint = `/api/updateProject?projectId=${encodeURIComponent(projectId)}`;
   return makeApiRequest<UpdateProjectResponse>(endpoint, apiKey, 'PATCH', updates);
 }
 
@@ -211,7 +207,7 @@ export async function deleteProject(apiKey: string, projectId: string): Promise<
     throw new Error("Project ID is required for deleteProject");
   }
 
-  const endpoint = `/deleteProject?projectId=${encodeURIComponent(projectId)}`;
+  const endpoint = `/api/deleteProject?projectId=${encodeURIComponent(projectId)}`;
   // Use a temporary type that allows for an empty object from makeApiRequest on 204
   type TempDeleteResponse = DeleteProjectResponse | {};
   const response = await makeApiRequest<TempDeleteResponse>(endpoint, apiKey, 'DELETE');
@@ -269,7 +265,13 @@ export async function generateWizardWork(
     throw new Error("Email is required for generateWizardWork");
   }
 
-  return makeApiRequest<GenerateWizardWorkResponse>('/generateWizardWork', apiKey, 'POST', params);
+  // Add isDefault: true as required by the API (from demo script)
+  const requestBody = {
+    ...params,
+    isDefault: true
+  };
+
+  return makeApiRequest<GenerateWizardWorkResponse>('/api/generateWizardWork', apiKey, 'POST', requestBody);
 }
 
 // --- formatPrompt ---
@@ -298,9 +300,9 @@ export async function formatPrompt(
 
   const body: FormatPromptInputBody = {
     prompt: prompt,
-    ...(projectId && { projectId: projectId })
+    ...(projectId && { projectId: projectId })  // Note: API expects projectId not project_id
   };
-  return makeApiRequest<FormatPromptResponse>('/formatPrompt', apiKey, 'POST', body);
+  return makeApiRequest<FormatPromptResponse>('/api/formatPrompt', apiKey, 'POST', body);
 }
 
 // --- uploadProjectFiles ---
@@ -353,7 +355,7 @@ export async function uploadProjectFiles(
     formData.append('file', file);
   });
 
-  const url = `${DEEPWRITER_API_BASE_URL}/uploadProjectFiles`;
+  const url = `${DEEPWRITER_API_BASE_URL}/api/uploadProjectFiles`;
   const headers = {
     'x-api-key': apiKey,
     'Origin': DEEPWRITER_API_BASE_URL.replace('/api', ''),

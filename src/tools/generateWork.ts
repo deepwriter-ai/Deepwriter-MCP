@@ -1,8 +1,7 @@
 import * as apiClient from '../api/deepwriterClient.js';
 
-// Define input/output types based on schema
+// Define input/output types based on schema (API key from environment)
 interface GenerateWizardWorkInputArgs {
-  api_key: string;
   project_id: string;
   prompt: string;
   author: string;
@@ -30,8 +29,10 @@ export const generateWizardWorkTool = {
   async execute(args: GenerateWizardWorkInputArgs): Promise<GenerateWizardWorkMcpOutput> {
     console.error(`Executing generateWizardWork tool for project ID: ${args.project_id}...`);
 
-    if (!args.api_key) {
-      throw new Error("Missing required argument: api_key");
+    // Get API key from environment
+    const apiKey = process.env.DEEPWRITER_API_KEY;
+    if (!apiKey) {
+      throw new Error("DEEPWRITER_API_KEY environment variable is required");
     }
     if (!args.project_id) {
       throw new Error("Missing required argument: project_id");
@@ -47,9 +48,9 @@ export const generateWizardWorkTool = {
     }
 
     try {
-      // Prepare the parameters for the API client
+      // Prepare the parameters for the API client (API expects projectId not project_id)
       const wizardParams = {
-        projectId: args.project_id,
+        projectId: args.project_id,  // Convert project_id to projectId for API
         prompt: args.prompt,
         author: args.author,
         email: args.email,
@@ -66,7 +67,7 @@ export const generateWizardWorkTool = {
       };
 
       // Call the actual API client function
-      const apiResponse = await apiClient.generateWizardWork(args.api_key, wizardParams);
+      const apiResponse = await apiClient.generateWizardWork(apiKey, wizardParams);
       console.error(`API call successful for generateWizardWork. Job ID: ${apiResponse.jobId}`);
 
       // Transform the API response into MCP format

@@ -35,3 +35,9 @@
 - **File Upload Architecture**: Implemented FormData handling with comprehensive validation
 - **Error Handling Strategy**: Enhanced validation and detailed error reporting for all new endpoints
 - **Type Safety**: Maintained strict TypeScript coverage throughout migration
+
+## Current Debugging Issue (Latest)
+- **MCP Server Detection Problem**: Server connects but no tools are exposed to Roo
+- **Root Cause**: Missing FormData import from node-fetch in API client
+- **Symptoms**: Server starts successfully, but tool registration fails during import phase
+- **Solution**: Need to add proper FormData import and rebuild project

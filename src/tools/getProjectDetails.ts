@@ -1,8 +1,7 @@
 import * as apiClient from '../api/deepwriterClient.js'; // Import the API client
 
-// Define input/output types based on schema
+// Define input/output types based on schema (API key from environment)
 interface GetProjectDetailsInput {
-  api_key: string;
   project_id: string;
 }
 
@@ -18,8 +17,10 @@ export const getProjectDetailsTool = {
   async execute(args: GetProjectDetailsInput): Promise<GetProjectDetailsMcpOutput> {
     console.error(`Executing getProjectDetails tool for project ID: ${args.project_id}...`);
 
-    if (!args.api_key) {
-      throw new Error("Missing required argument: api_key");
+    // Get API key from environment
+    const apiKey = process.env.DEEPWRITER_API_KEY;
+    if (!apiKey) {
+      throw new Error("DEEPWRITER_API_KEY environment variable is required");
     }
     if (!args.project_id) {
       throw new Error("Missing required argument: project_id");
@@ -27,7 +28,7 @@ export const getProjectDetailsTool = {
 
     try {
       // Call the actual API client function
-      const apiResponse = await apiClient.getProjectDetails(args.api_key, args.project_id);
+      const apiResponse = await apiClient.getProjectDetails(apiKey, args.project_id);
       console.error(`API call successful for getProjectDetails.`);
 
       // Transform the API response into MCP format

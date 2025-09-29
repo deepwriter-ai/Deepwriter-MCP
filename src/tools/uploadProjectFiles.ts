@@ -1,8 +1,7 @@
 import * as apiClient from '../api/deepwriterClient.js';
 
-// Define input/output types based on schema
+// Define input/output types based on schema (API key from environment)
 interface UploadProjectFilesInputArgs {
-  api_key: string;
   project_id: string;
   files: File[]; // Array of File objects
 }
@@ -18,8 +17,10 @@ export const uploadProjectFilesTool = {
   async execute(args: UploadProjectFilesInputArgs): Promise<UploadProjectFilesMcpOutput> {
     console.error(`Executing uploadProjectFiles tool for project ID: ${args.project_id}...`);
 
-    if (!args.api_key) {
-      throw new Error("Missing required argument: api_key");
+    // Get API key from environment
+    const apiKey = process.env.DEEPWRITER_API_KEY;
+    if (!apiKey) {
+      throw new Error("DEEPWRITER_API_KEY environment variable is required");
     }
     if (!args.project_id) {
       throw new Error("Missing required argument: project_id");
@@ -30,7 +31,7 @@ export const uploadProjectFilesTool = {
 
     try {
       // Call the actual API client function
-      const apiResponse = await apiClient.uploadProjectFiles(args.api_key, args.project_id, args.files);
+      const apiResponse = await apiClient.uploadProjectFiles(apiKey, args.project_id, args.files);
       console.error(`API call successful for uploadProjectFiles. Uploaded ${apiResponse.summary.successful_uploads} files.`);
 
       // Generate a detailed response message

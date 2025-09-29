@@ -1,8 +1,8 @@
 import * as apiClient from '../api/deepwriterClient.js'; // Import the API client
 
-// Define input/output types based on schema (can be refined later)
+// Define input/output types based on schema (API key from environment)
 interface ListProjectsInput {
-  api_key: string;
+  // No parameters needed - API key from environment
 }
 
 interface Project {
@@ -24,14 +24,15 @@ export const listProjectsTool = {
   async execute(args: ListProjectsInput): Promise<ListProjectsOutput> {
     console.error(`Executing listProjects tool...`);
 
-    if (!args.api_key) {
-      // TODO: Improve error handling for MCP responses
-      throw new Error("Missing required argument: api_key");
+    // Get API key from environment
+    const apiKey = process.env.DEEPWRITER_API_KEY;
+    if (!apiKey) {
+      throw new Error("DEEPWRITER_API_KEY environment variable is required");
     }
 
     try {
       // Call the actual API client function
-      const apiResponse = await apiClient.listProjects(args.api_key);
+      const apiResponse = await apiClient.listProjects(apiKey);
       console.error(`API call successful. Received ${apiResponse.projects.length} projects.`);
 
       // Transform the API response into MCP format

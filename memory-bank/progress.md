@@ -48,8 +48,18 @@
 - ✅ **Test Cases Generated**: MCP test cases written to `mcp-test-cases.json`
 - 🧪 **Ready for Integration Testing**: All components ready for live API testing
 
-## Known Issues (Resolved)
+## Known Issues (Latest - MCP Detection Issue)
+- **MCP Server Not Exposing Tools**: Server connects but shows "No tools available"
+  - **Root Cause**: Missing `FormData` import in `src/api/deepwriterClient.ts`
+  - **Technical Details**: Build process generated invalid JavaScript due to undefined FormData
+  - **Status**: FIXED - Removed node-fetch dependency, using native Node.js APIs
+  - **Path Issues**: Fixed inconsistent Windows/WSL path configurations in both local and global MCP settings
+  - **Build Context Issues**: WSL build commands failing from Windows CMD context
+
+## Recently Resolved Issues
 - ~~Limited error handling~~ → Enhanced validation and error reporting implemented
 - ~~Missing comprehensive tool support~~ → All new tools implemented with full parameter support
 - ~~Outdated API endpoints~~ → Complete migration to latest DeepWriter APIs completed
 - ~~Documentation gaps~~ → Memory Bank fully updated with migration details
+- ~~Path inconsistencies~~ → Standardized on WSL paths for both configurations
+- ~~Module import errors~~ → Switched to native Node.js fetch/FormData APIs

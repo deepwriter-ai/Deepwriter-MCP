@@ -17,7 +17,6 @@ interface ProjectUpdatesArgs {
 }
 
 interface UpdateProjectInputArgs {
-  api_key: string;
   project_id: string;
   updates: ProjectUpdatesArgs;
 }
@@ -34,8 +33,10 @@ export const updateProjectTool = {
   async execute(args: UpdateProjectInputArgs): Promise<UpdateProjectMcpOutput> {
     console.error(`Executing updateProject tool for project ID: ${args.project_id}...`);
 
-    if (!args.api_key) {
-      throw new Error("Missing required argument: api_key");
+    // Get API key from environment
+    const apiKey = process.env.DEEPWRITER_API_KEY;
+    if (!apiKey) {
+      throw new Error("DEEPWRITER_API_KEY environment variable is required");
     }
     if (!args.project_id) {
       throw new Error("Missing required argument: project_id");
@@ -47,7 +48,7 @@ export const updateProjectTool = {
     try {
       // Call the actual API client function
       // Note: The API client expects ProjectUpdates type, which matches ProjectUpdatesArgs here
-      const apiResponse = await apiClient.updateProject(args.api_key, args.project_id, args.updates);
+      const apiResponse = await apiClient.updateProject(apiKey, args.project_id, args.updates);
       console.error(`API call successful for updateProject. Updated project ID: ${apiResponse.id}`);
 
       // Transform the API response into MCP format
