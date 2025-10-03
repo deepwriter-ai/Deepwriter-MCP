@@ -283,6 +283,7 @@ interface FormatPromptInputBody {
 
 export interface FormatPromptResponse {
   enhanced_prompt: string;
+  formatted_prompt?: string; // Legacy field name for compatibility
   questions?: string[];
 }
 
