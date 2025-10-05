@@ -3,6 +3,10 @@
 # DeepWriter MCP Server
 [![smithery badge](https://smithery.ai/badge/@deepwriter-ai/deepwriter-mcp)](https://smithery.ai/server/@deepwriter-ai/deepwriter-mcp)
 
+**Official Site:** [DeepWriter.com](https://deepwriter.com)
+
+**Additional Documentation:** [DeepWriter API Access Docs](https://docs.deepwriter.com/api-access/deepwriter-mcp)
+
 A Model Context Protocol (MCP) server for interacting with the DeepWriter API. This server provides tools for creating, managing, and generating content for DeepWriter projects through the standardized MCP interface.
 
 <a href="https://glama.ai/mcp/servers/@deepwriter-ai/Deepwriter-MCP">
