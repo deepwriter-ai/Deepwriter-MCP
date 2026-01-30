@@ -1,7 +1,7 @@
 // Using native fetch and FormData (available in Node.js 18+)
 
 // TODO: Make base URL configurable (e.g., via environment variables)
-const DEEPWRITER_API_BASE_URL = 'https://app.deepwriter.com';
+const DEEPWRITER_API_BASE_URL = 'https://api.deepwriter.com';
 
 interface ApiErrorResponse {
   message: string;
@@ -360,7 +360,7 @@ export async function uploadProjectFiles(
   const url = `${DEEPWRITER_API_BASE_URL}/api/uploadProjectFiles`;
   const headers = {
     'x-api-key': apiKey,
-    'Origin': DEEPWRITER_API_BASE_URL.replace('/api', ''),
+    'Origin': DEEPWRITER_API_BASE_URL,
     // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
   };
 
