@@ -1,7 +1,8 @@
 // Using native fetch and FormData (available in Node.js 18+)
 
-// TODO: Make base URL configurable (e.g., via environment variables)
-const DEEPWRITER_API_BASE_URL = 'https://api.deepwriter.com';
+// Base URL for the DeepWriter API
+declare const process: any;
+const DEEPWRITER_API_BASE_URL = (typeof process !== 'undefined' && process.env && process.env.DEEPWRITER_API_BASE_URL) || 'https://app.deepwriter.com';
 
 interface ApiErrorResponse {
   message: string;
@@ -20,6 +21,7 @@ async function makeApiRequest<T>(
     'x-api-key': apiKey,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
+    'Origin': DEEPWRITER_API_BASE_URL,
   };
 
   console.error(`Making API request: ${method} ${url}`); // Log request details (excluding body/key for security)
