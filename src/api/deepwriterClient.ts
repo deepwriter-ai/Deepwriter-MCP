@@ -21,7 +21,7 @@ async function makeApiRequest<T>(
     'x-api-key': apiKey,
     'Content-Type': 'application/json',
     'Accept': 'application/json',
-    'Origin': DEEPWRITER_API_BASE_URL,
+    
   };
 
   console.error(`Making API request: ${method} ${url}`); // Log request details (excluding body/key for security)
@@ -362,7 +362,7 @@ export async function uploadProjectFiles(
   const url = `${DEEPWRITER_API_BASE_URL}/api/uploadProjectFiles`;
   const headers = {
     'x-api-key': apiKey,
-    'Origin': DEEPWRITER_API_BASE_URL,
+    
     // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
   };
 
