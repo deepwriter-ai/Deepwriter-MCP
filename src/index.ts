@@ -26,6 +26,7 @@ interface ToolResponse {
   annotations?: ToolAnnotations;
 }
 import { listProjectsTool } from './tools/listProjects.js';
+import { listJobsTool } from './tools/listJobs.js';
 import { getProjectDetailsTool } from './tools/getProjectDetails.js';
 import { createProjectTool } from './tools/createProject.js';
 import { updateProjectTool } from './tools/updateProject.js';
@@ -203,6 +204,28 @@ server.tool(
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: false // Only accesses DeepWriter API
+      }
+    };
+  }
+);
+
+server.tool(
+  listJobsTool.name,
+  listJobsTool.description,
+  {
+    // No parameters - API key from environment
+  },
+  async (params: {}) => {
+    console.error(`SDK invoking ${listJobsTool.name}...`);
+    const result = await listJobsTool.execute({});
+    return {
+      content: result.content,
+      annotations: {
+        title: "List Jobs",
+        readOnlyHint: true,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: false
       }
     };
   }

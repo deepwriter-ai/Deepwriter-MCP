@@ -92,6 +92,31 @@ export async function listProjects(apiKey: string): Promise<ListProjectsResponse
   return makeApiRequest<ListProjectsResponse>('/api/listProjects', apiKey, 'GET');
 }
 
+// --- listJobs ---
+
+export interface JobListItem {
+  id: string;
+  project_id: string;
+  status: string;
+  percent_complete: number | null;
+  created_at: string;
+  title?: string; // Project title
+}
+
+export interface ListJobsResponse {
+  jobs: JobListItem[];
+  total?: number;
+}
+
+export async function listJobs(apiKey: string): Promise<ListJobsResponse> {
+  console.error("Calling actual listJobs API");
+  if (!apiKey) {
+    throw new Error("API key is required for listJobs");
+  }
+  // Note: Using the authenticated user's jobs endpoint
+  return makeApiRequest<ListJobsResponse>('/api/jobs', apiKey, 'GET');
+}
+
 // --- getProjectDetails ---
 
 interface ProjectDetails {
