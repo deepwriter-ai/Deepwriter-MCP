@@ -10,6 +10,12 @@ import {
 } from '../api/deepwriterClient.js';
 import dotenv from 'dotenv';
 
+// Polyfill File for Node.js < 20 compatibility
+if (typeof global.File === 'undefined') {
+  const { File } = await import('node:buffer');
+  global.File = File as any;
+}
+
 dotenv.config();
 
 const apiKey = process.env.DEEPWRITER_API_KEY || '';
