@@ -34,6 +34,9 @@ import { deleteProjectTool } from './tools/deleteProject.js';
 import { generateWizardWorkTool } from './tools/generateWork.js';
 import { formatPromptTool } from './tools/formatPrompt.js';
 import { uploadProjectFilesTool } from './tools/uploadProjectFiles.js';
+import { autoprompterTool, autoprompterInputSchema } from './tools/autoprompter.js';
+import { projectPrepTool, projectPrepInputSchema } from './tools/projectPrep.js';
+import { projectLaunchTool, projectLaunchInputSchema } from './tools/projectLaunch.js';
 
 // Define specific interfaces for each tool's parameters (API key handled via environment)
 interface ListProjectsParams {
@@ -228,6 +231,64 @@ server.tool(
         openWorldHint: false
       }
     };
+  }
+);
+
+// --- New Master-Flow Tools ---
+
+server.tool(
+  autoprompterTool.name,
+  autoprompterTool.description,
+  // Zod schema to JSON schema conversion happens manually or via helper usually, 
+  // but here we just passing the shape expected by the SDK.
+  // We can just reuse what we defined in the module if we export the JSON schema or define it inline.
+  // For safety/speed, I'll define inline based on the Zod schema
+  {
+    prompt: z.string().describe("Initial prompt"),
+    title: z.string(),
+    email: z.string().email(),
+    author: z.string().optional(),
+    mode: z.enum(['deepwriter', 'benchmark', 'romance', 'homework', 'deepseek', 'skunkworks']).optional()
+  },
+  async (params: any) => {
+    console.error(`SDK invoking ${autoprompterTool.name}...`);
+    const result = await autoprompterTool.execute(params);
+    return {
+      content: result.content,
+      annotations: { title: "Autoprompter" }
+    };
+  }
+);
+
+server.tool(
+  projectPrepTool.name,
+  projectPrepTool.description,
+  {
+    prompt: z.string(),
+    title: z.string(),
+    email: z.string()
+  },
+  async (params: any) => {
+    console.error(`SDK invoking ${projectPrepTool.name}...`);
+    const result = await projectPrepTool.execute(params);
+    return { content: result.content };
+  }
+);
+
+server.tool(
+  projectLaunchTool.name,
+  projectLaunchTool.description,
+  {
+    projectId: z.string(),
+    answers: z.array(z.object({ question: z.string(), answer: z.string() })),
+    email: z.string(),
+    enhancedPrompt: z.string(),
+    author: z.string().optional()
+  },
+  async (params: any) => {
+    console.error(`SDK invoking ${projectLaunchTool.name}...`);
+    const result = await projectLaunchTool.execute(params);
+    return { content: result.content };
   }
 );
 
