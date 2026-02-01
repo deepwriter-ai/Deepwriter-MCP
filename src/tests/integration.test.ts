@@ -10,6 +10,12 @@ import {
 } from '../api/deepwriterClient.js';
 import dotenv from 'dotenv';
 
+// Polyfill File for Node.js < 20 compatibility
+if (typeof global.File === 'undefined') {
+  const { File } = await import('node:buffer');
+  global.File = File as any;
+}
+
 dotenv.config();
 
 const apiKey = process.env.DEEPWRITER_API_KEY || '';
@@ -34,12 +40,9 @@ describe('Deepwriter MCP Live Integration', () => {
     }
   });
 
-  test('Full Lifecycle Integration Test', async () => {
-    if (!apiKey) {
-      console.log('Skipping test due to missing API key');
-      return;
-    }
+  const testFn = apiKey ? test : test.skip;
 
+  testFn('Full Lifecycle Integration Test', async () => {
     // 1. List Projects (Pre-check)
     console.log('Step 1: Listing projects...');
     const initialProjects = await listProjects(apiKey);
@@ -84,6 +87,8 @@ describe('Deepwriter MCP Live Integration', () => {
 
     // 7. Upload Files
     console.log('Step 7: Uploading files...');
+    // Use global File if available, otherwise we might need a polyfill for Node < 20
+    // But the task is to ensure Node 20+ or polyfill.
     const dummyFile = new File(['This is a test file content'], 'test.txt', { type: 'text/plain' });
     const uploadResponse = await uploadProjectFiles(apiKey, createdProjectId, [dummyFile]);
     expect(uploadResponse.success).toBe(true);
@@ -99,11 +104,6 @@ describe('Deepwriter MCP Live Integration', () => {
 
     // 9. Verify Deletion
     console.log('Step 9: Verifying deletion...');
-    try {
-      await getProjectDetails(apiKey, deletedId);
-      fail('Project should have been deleted');
-    } catch (error: any) {
-      expect(error.message).toContain('404');
-    }
+    await expect(getProjectDetails(apiKey, deletedId)).rejects.toThrow(/404/);
   });
 });
