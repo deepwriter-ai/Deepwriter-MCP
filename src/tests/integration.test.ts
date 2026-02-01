@@ -34,11 +34,9 @@ describe('Deepwriter MCP Live Integration', () => {
     }
   });
 
-  test('Full Lifecycle Integration Test', async () => {
-    if (!apiKey) {
-      console.log('Skipping test due to missing API key');
-      return;
-    }
+  const testFn = apiKey ? test : test.skip;
+
+  testFn('Full Lifecycle Integration Test', async () => {
 
     // 1. List Projects (Pre-check)
     console.log('Step 1: Listing projects...');
@@ -99,11 +97,6 @@ describe('Deepwriter MCP Live Integration', () => {
 
     // 9. Verify Deletion
     console.log('Step 9: Verifying deletion...');
-    try {
-      await getProjectDetails(apiKey, deletedId);
-      fail('Project should have been deleted');
-    } catch (error: any) {
-      expect(error.message).toContain('404');
-    }
+    await expect(getProjectDetails(apiKey, deletedId)).rejects.toThrow(/404/);
   });
 });
