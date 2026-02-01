@@ -37,7 +37,6 @@ describe('Deepwriter MCP Live Integration', () => {
   const testFn = apiKey ? test : test.skip;
 
   testFn('Full Lifecycle Integration Test', async () => {
-
     // 1. List Projects (Pre-check)
     console.log('Step 1: Listing projects...');
     const initialProjects = await listProjects(apiKey);
@@ -82,6 +81,8 @@ describe('Deepwriter MCP Live Integration', () => {
 
     // 7. Upload Files
     console.log('Step 7: Uploading files...');
+    // Use global File if available, otherwise we might need a polyfill for Node < 20
+    // But the task is to ensure Node 20+ or polyfill.
     const dummyFile = new File(['This is a test file content'], 'test.txt', { type: 'text/plain' });
     const uploadResponse = await uploadProjectFiles(apiKey, createdProjectId, [dummyFile]);
     expect(uploadResponse.success).toBe(true);
